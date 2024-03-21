@@ -1,0 +1,28 @@
+{
+  "name": "phn",
+  "version": "0.0.1",
+  "description": "a lightweight http client",
+  "main": "phn.js",
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yetzt/node-phn.git"
+  },
+  "keywords": [
+    "http",
+    "https",
+    "request",
+    "fetch",
+    "ajax",
+    "url",
+    "uri",
+    "phin",
+    "centra"
+  ],
+  "author": "yetzt",
+  "license": "MIT",
+  "engines": {
+    "node": ">= 8"
+  },
+  "dependencies": {}
+}
