@@ -1,6 +1,6 @@
 {
   "name": "phn",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "a lightweight http client",
   "main": "phn.js",
   "scripts": {
