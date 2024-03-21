@@ -1,9 +1,11 @@
 {
   "name": "phn",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "a lightweight http client",
   "main": "phn.js",
-  "scripts": {},
+  "scripts": {
+    "test": "node test.js"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/yetzt/node-phn.git"
@@ -24,5 +26,7 @@
   "engines": {
     "node": ">= 8"
   },
-  "dependencies": {}
+  "dependencies": {
+    "uvu": "^0.5.6"
+  }
 }
