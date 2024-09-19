@@ -98,6 +98,11 @@ const request = class request {
 		return this;
 	};
 
+	resOption (name, value) {
+		this.resOptions[name] = value;
+		return this;
+	};
+
 	stream () {
 		this.streamEnabled = true;
 		return this;
@@ -230,6 +235,7 @@ const request = class request {
 * @property {boolean} [stream=false] - Enable streaming of response. (Removes body property)
 * @property {boolean} [compression=false] - Enable compression for request
 * @property {?number} [timeout=null] - Request timeout in milliseconds
+* @property {?maxBuffer} [maxBuffer=5e7] - Maximum response buffer size
 * @property {string} [hostname=autodetect] - URL hostname
 * @property {Number} [port=autodetect] - URL port
 * @property {string} [path=autodetect] - URL path
@@ -260,6 +266,7 @@ const phn = async (opts) => {
 	if (opts.data) req.body(opts.data);
 	if (opts.form) req.body(opts.form, 'form');
 	if (opts.compression) req.compress();
+	if (opts.maxBuffer) req.resOption('maxBuffer', opts.maxBuffer);
 	if (!opts.redirected) opts.redirected = 0;
 
 	if (typeof opts.core === 'object') {
