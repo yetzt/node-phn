@@ -77,6 +77,12 @@ let httpHandler = (req, res) => {
 					compressor.write('Hello there')
 					compressor.end()
 					break
+				case '/large':
+					res.writeHead(200, {
+						'Content-Length': 5e4
+					})
+					res.end(Buffer.alloc(5e4))
+					break
 				default:
 					res.writeHead(404)
 					res.end('Not a valid test endpoint')
@@ -522,6 +528,20 @@ test('Parse empty JSON response', () => {
 			assert.ok(true, 'Parsed null response properly')
 		}
 		else assert.ok(false, 'Failed to parse empty JSON response')
+	})
+})
+
+test('Maximum Buffer exceeded', () => {
+	p({
+		'url': 'http://localhost:5136/large',
+		'method': 'GET',
+		'timeout': 500,
+		'maxBuffer': 5e2,
+	}, (err, res) => {
+		if (err && err.message === "Server aborted request") {
+			return assert.ok(true, 'Request exceeding maximum Buffer size was aborted')
+		}
+		return assert.ok(false, 'Request exceeding maximum Buffer size was not aborted')
 	})
 })
 
