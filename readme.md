@@ -31,6 +31,7 @@ const res = await phn({
 * `stream` - return stream as `res.stream` instead of `res.body`
 * `compression` - handle compression, accept `br`, `gzip` and `deflate`
 * `timeout` -  request timeout in milliseconds
+* `maxBuffer` -  maximum response buffer size
 
 ### stream
 
