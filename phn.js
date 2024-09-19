@@ -82,13 +82,6 @@ const request = class request {
 	};
 
 	header (key, value) {
-		if (typeof key === 'object') Object.entries(key).forEach(([queryKey, queryValue]) => {
-			this.url.searchParams.append(queryKey, queryValue);
-		}); else this.url.searchParams.append(key, value);
-		return this;
-	};
-
-	header (key, value) {
 		if (typeof key === 'object') Object.entries(key).forEach(([headerName, headerValue]) => {
 			this.reqHeaders[headerName.toLowerCase()] = headerValue;
 		}); else this.reqHeaders[key.toLowerCase()] = value;
