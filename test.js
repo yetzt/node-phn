@@ -204,10 +204,8 @@ if (typeof Bun === "undefined") tests.add('Stream data from server', assert => {
 		stream: true,
 		timeout: 500
 	}, (err, res) => {
-		console.log("HERE?");
 		if (err) return assert(false, err);
 		if (res?.stream) {
-			console.log("HERE?");
 			let done = false;
 			res.stream.on('data', data => {
 				if (!done) assert(data.toString() === 'hi', 'Stream got unexpected partial data.');
