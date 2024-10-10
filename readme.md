@@ -4,7 +4,22 @@ A lightweight http client adapted from [phin](https://github.com/ethanent/phin) 
 
 ## install
 
-> `npm i phn`
+## npm
+
+> `npm i phn`, use `--omit=optional` to drop support for `zstd` decompression via `fzstd`
+
+## bun
+
+> `bun i phn`, use `--no-optional` to drop support for `zstd` decompression via `fzstd`
+
+## yarn
+
+> `yarn install phn`, use `--ignore-optional` to drop support for `zstd` decompression via `fzstd`
+
+## pnpm
+
+> `pnpm i phn`, use `--no-optional` to drop support for `zstd` decompression via `fzstd`
+
 
 ## usage
 
