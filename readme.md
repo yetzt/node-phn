@@ -2,23 +2,18 @@
 
 A lightweight http client adapted from [phin](https://github.com/ethanent/phin) and [centra](https://github.com/ethanent/centra).
 
+It works great with `node` and `bun` and comes with optional support for `zstd` compression via `fzstd`.
+
+
 ## install
 
-## npm
+> `npm i phn`
 
-> `npm i phn`, use `--omit=optional` to drop support for `zstd` decompression via `fzstd`
+### optional: zstd
 
-## bun
+`phn` supports `zstd` compression if `fzstd` is installed (not included)
 
-> `bun i phn`, use `--no-optional` to drop support for `zstd` decompression via `fzstd`
-
-## yarn
-
-> `yarn install phn`, use `--ignore-optional` to drop support for `zstd` decompression via `fzstd`
-
-## pnpm
-
-> `pnpm i phn`, use `--no-optional` to drop support for `zstd` decompression via `fzstd`
+> `npm i phn fzstd`
 
 
 ## usage
@@ -44,7 +39,7 @@ const res = await phn({
 * `followRedirects` - follow redirects if `true`
 * `maxRedirects` - maximum number of redirects to follow, default: infinite
 * `stream` - return stream as `res.stream` instead of `res.body`
-* `compression` - handle compression, accept `br`, `gzip` and `deflate`, also `zstd` if optional `fzstd` dependency is installed. string overrides `accept-encoding` header
+* `compression` - handle compression, accept `br`, `gzip` and `deflate`, also `zstd` if `fzstd` package is installed. string overrides `accept-encoding` header
 * `timeout` -  request timeout in milliseconds
 * `maxBuffer` -  maximum response buffer size
 
@@ -110,7 +105,7 @@ const res = await phn('https://example.org/')
 
 ## comparison
 
-`phn` is tiny and comes with no dependencies.
+`phn` is tiny and comes with no required dependencies.
 
 Package | Size
 --- | ---
