@@ -3,3 +3,4 @@ node_modules
 .npmignore
 bun.lockb
 yarn.lock
+vendor
