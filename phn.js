@@ -210,8 +210,8 @@ const request = class request {
 					resp._addChunk(chunk);
 
 					if (this.resOptions.maxBuffer !== null && resp.body.length > this.resOptions.maxBuffer) {
-						stream.destroy();
 						reject(new Error('Received a response which was longer than acceptable when buffering. (' + resp.body.length + ' bytes)'));
+						stream.destroy();
 					};
 				});
 
