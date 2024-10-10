@@ -3,9 +3,19 @@ const http = require('http');
 const https = require('https');
 const qs = require('querystring');
 const zlib = require('zlib');
+const transformStream = require('stream').Transform;
 const { URL } = require('url');
 
-const supportedCompressions = 'br, gzip, deflate';
+// optional dependency `fzstd`
+const zstd = (()=>{
+	try {
+		return require('fzstd');
+	} catch (err) {
+		return undefined;
+	}
+})();
+
+const supportedCompressions = `${(zstd||zlib.createZstdDecompress)?'zstd, ':''}br, gzip, deflate`;
 
 // response class
 const response = class response {
@@ -108,9 +118,9 @@ const request = class request {
 		return this;
 	};
 
-	compress () {
+	compress (compressions) {
 		this.compressionEnabled = true;
-		if (!this.reqHeaders['accept-encoding']) this.reqHeaders['accept-encoding'] = supportedCompressions;
+		if (!this.reqHeaders['accept-encoding']) this.reqHeaders['accept-encoding'] = (typeof compressions === "string") ? compressions : supportedCompressions;
 		return this;
 	};
 
@@ -149,6 +159,26 @@ const request = class request {
 
 				if (this.compressionEnabled) {
 					switch (res.headers['content-encoding']) {
+						case "zstd":
+							// i wish fzstd had a proper stream implementaion
+							stream = res.pipe(zlib.createZstdDecompress ? zlib.createZstdDecompress() : new transformStream({
+								transform(chunk, encoding, fn) {
+									try {
+										if (!this.zstd) this.zstd = new zstd.Decompress((ch,end)=>{
+											this.push(ch);
+											if (end) this.push(null);
+										});
+										this.zstd.push(chunk);
+										fn();
+									} catch (err) {
+										fn(err);
+									}
+								},
+								flush() {
+									this.zstd.push(Buffer.alloc(0), true);
+								},
+							}));
+						break;
 						case "br":
 							stream = res.pipe(zlib.createBrotliDecompress());
 						break;
@@ -233,7 +263,7 @@ const request = class request {
 * @property {boolean} [followRedirects=false] - Enable HTTP redirect following
 * @property {Number} [maxRedirects=0] - Maximum number of redirects to follow. (0 = Infinite)
 * @property {boolean} [stream=false] - Enable streaming of response. (Removes body property)
-* @property {boolean} [compression=false] - Enable compression for request
+* @property {boolean|string} [compression=false] - Enable compression for request, specify accept-encoding header
 * @property {?number} [timeout=null] - Request timeout in milliseconds
 * @property {?maxBuffer} [maxBuffer=5e7] - Maximum response buffer size
 * @property {string} [hostname=autodetect] - URL hostname
@@ -265,7 +295,7 @@ const phn = async (opts) => {
 	if (opts.query) req.query(opts.query);
 	if (opts.data) req.body(opts.data);
 	if (opts.form) req.body(opts.form, 'form');
-	if (opts.compression) req.compress();
+	if (opts.compression) req.compress(opts.compression);
 	if (opts.maxBuffer) req.resOption('maxBuffer', opts.maxBuffer);
 	if (!opts.redirected) opts.redirected = 0;
 

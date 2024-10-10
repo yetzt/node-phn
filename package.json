@@ -28,5 +28,8 @@
   },
   "devDependencies": {
     "uvu": "^0.5.6"
+  },
+  "optionalDependencies": {
+    "fzstd": "^0.1.1"
   }
 }

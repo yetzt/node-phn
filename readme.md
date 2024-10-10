@@ -29,7 +29,7 @@ const res = await phn({
 * `followRedirects` - follow redirects if `true`
 * `maxRedirects` - maximum number of redirects to follow, default: infinite
 * `stream` - return stream as `res.stream` instead of `res.body`
-* `compression` - handle compression, accept `br`, `gzip` and `deflate`
+* `compression` - handle compression, accept `br`, `gzip` and `deflate`, also `zstd` if optional `fzstd` dependency is installed. string overrides `accept-encoding` header
 * `timeout` -  request timeout in milliseconds
 * `maxBuffer` -  maximum response buffer size
 
