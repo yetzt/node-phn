@@ -3,13 +3,13 @@ const pp = require('./phn.js')
 const http = require('http');
 const qs = require('querystring');
 
-const w = [];
-w.add = (name, test) => w.push([name, test]);
+const tests = [];
+tests.add = (name, test) => tests.push([name, test]);
 
 let fail = false;
 
 const run = (i = 0) => {
-	const [name, test] = w[i];
+	const [name, test] = tests[i];
 	i++;
 	const assert = (pass, message) => {
 		console.log(`${i} ${pass ? "\x1b[32mOK\x1b[0m" : "\x1b[31mFAIL\x1b[0m"} ${name}`);
@@ -17,7 +17,7 @@ const run = (i = 0) => {
 			fail = true;
 			console.error(message);
 		}
-		if(i < w.length) {
+		if(i < tests.length) {
 			run(i);
 		} else {
 			process.exit(fail ? 1 : 0);
@@ -34,14 +34,14 @@ const run = (i = 0) => {
 };
 
 // Define test cases
-w.add('Simple GET request', assert => {
+tests.add('Simple GET request', assert => {
 	p('http://localhost:5136/get', (err, res) => {
 		if(err) return assert(false, err);
 		assert(res.statusCode === 200 && res.body.toString() === 'Hi.', `Received unexpected data. Status code: ${res.statusCode}`);
 	});
 });
 
-w.add('POST request with body', assert => {
+tests.add('POST request with body', assert => {
 	p({
 		url: 'http://localhost:5136/post',
 		method: 'POST',
@@ -52,14 +52,14 @@ w.add('POST request with body', assert => {
 	});
 });
 
-w.add('Promisified phin requesting', assert => {
+tests.add('Promisified phin requesting', assert => {
 	pp({
 		url: 'http://localhost:5136/get',
 		method: 'GET'
 	}).then(res => assert(res.body.toString() === 'Hi.', 'Promisified phin did not properly send data to handler.')).catch(err => assert(false, err));
 });
 
-w.add('Timeout option', assert => {
+tests.add('Timeout option', assert => {
 	p({
 		url: 'http://localhost:5136/slowres',
 		method: 'GET',
@@ -72,7 +72,7 @@ w.add('Timeout option', assert => {
 	});
 });
 
-w.add('Sending form data with \'form\' option', assert => {
+tests.add('Sending form data with \'form\' option', assert => {
 	p({
 		url: 'http://localhost:5136/fd',
 		method: 'POST',
@@ -85,7 +85,7 @@ w.add('Sending form data with \'form\' option', assert => {
 	});
 });
 
-w.add('Parse JSON', assert => {
+tests.add('Parse JSON', assert => {
 	p({
 		url: 'http://localhost:5136/json',
 		method: 'GET',
@@ -96,7 +96,7 @@ w.add('Parse JSON', assert => {
 	});
 });
 
-w.add('Parse string', assert => {
+tests.add('Parse string', assert => {
 	p({
 		url: 'http://localhost:5136/get',
 		method: 'GET',
@@ -106,7 +106,7 @@ w.add('Parse string', assert => {
 	});
 });
 
-w.add('Parse "none" returns Buffer', assert => {
+tests.add('Parse "none" returns Buffer', assert => {
 	p({
 		url: 'http://localhost:5136/get',
 		method: 'GET',
@@ -116,7 +116,7 @@ w.add('Parse "none" returns Buffer', assert => {
 	});
 });
 
-w.add('Default no parse returns Buffer', assert => {
+tests.add('Default no parse returns Buffer', assert => {
 	p({
 		url: 'http://localhost:5136/get',
 		method: 'GET'
@@ -125,7 +125,7 @@ w.add('Default no parse returns Buffer', assert => {
 	});
 });
 
-w.add('Send object', assert => {
+tests.add('Send object', assert => {
 	p({
 		url: 'http://localhost:5136/json',
 		method: 'POST',
@@ -138,7 +138,7 @@ w.add('Send object', assert => {
 	});
 });
 
-w.add('No callback', assert => {
+tests.add('No callback', assert => {
 	try {
 		p({
 			url: 'http://localhost:5136/get',
@@ -152,7 +152,7 @@ w.add('No callback', assert => {
 	}
 });
 
-w.add('Parse bad JSON', assert => {
+tests.add('Parse bad JSON', assert => {
 	p({
 		url: 'http://localhost:5136/notjson',
 		method: 'GET',
@@ -163,7 +163,7 @@ w.add('Parse bad JSON', assert => {
 	});
 });
 
-w.add('Compression', assert => {
+tests.add('Compression', assert => {
 	p({
 		url: 'http://localhost:5136/compressed',
 		method: 'GET',
@@ -174,18 +174,18 @@ w.add('Compression', assert => {
 	});
 });
 
-w.add('Compression zstd', assert => {
+tests.add('Compression zstd', assert => {
 	p({
 		url: 'http://localhost:5136/compressed-zstd',
 		method: 'GET',
 		timeout: 1000,
 		compression: true
 	}, (err, res) => {
-		assert(res.body.toString() === 'example', res.body.toString());
+		assert(res.body.toString() === 'example', err);
 	});
 });
 
-w.add('Follow redirect', assert => {
+tests.add('Follow redirect', assert => {
 	p({
 		url: 'http://localhost:5136/redirect',
 		method: 'GET',
@@ -197,17 +197,21 @@ w.add('Follow redirect', assert => {
 });
 
 // server does not deliver chunked content in bun
-if (typeof Bun === "undefined") w.add('Stream data from server', assert => {
+if (typeof Bun === "undefined") tests.add('Stream data from server', assert => {
 	p({
 		url: 'http://localhost:5136/chunked',
 		method: 'GET',
 		stream: true,
 		timeout: 500
 	}, (err, res) => {
-		if(err) return assert(false, err);
-		if(res?.stream) {
-			res.stream.once('data', data => {
-				assert(data.toString() === 'hi', 'Stream got unexpected partial data.');
+		console.log("HERE?");
+		if (err) return assert(false, err);
+		if (res?.stream) {
+			console.log("HERE?");
+			let done = false;
+			res.stream.on('data', data => {
+				if (!done) assert(data.toString() === 'hi', 'Stream got unexpected partial data.');
+				done = true;
 			});
 		} else {
 			assert(false, 'Stream property didn\'t exist.');
@@ -215,7 +219,7 @@ if (typeof Bun === "undefined") w.add('Stream data from server', assert => {
 	});
 });
 
-w.add('Defaults with just URL', async assert => {
+tests.add('Defaults with just URL', async assert => {
 	const ppost = pp.defaults({
 		method: 'POST'
 	});
@@ -223,7 +227,7 @@ w.add('Defaults with just URL', async assert => {
 	assert(res.statusCode === 200 && res.body.toString() === 'Got your POST.', res.statusCode);
 });
 
-w.add('Defaults with object options', async assert => {
+tests.add('Defaults with object options', async assert => {
 	const ppost = pp.defaults({
 		method: 'POST'
 	});
@@ -233,7 +237,7 @@ w.add('Defaults with object options', async assert => {
 	assert(res.statusCode === 200 && res.body.toString() === 'Got your POST.', res.statusCode);
 });
 
-w.add('Buffer body', async assert => {
+tests.add('Buffer body', async assert => {
 	const res = await pp({
 		method: 'POST',
 		url: 'http://localhost:5136/post',
@@ -242,7 +246,7 @@ w.add('Buffer body', async assert => {
 	assert(res.statusCode === 200, res.body.toString());
 });
 
-w.add('JSON body content-type header', async assert => {
+tests.add('JSON body content-type header', async assert => {
 	const res = await pp({
 		method: 'POST',
 		url: 'http://localhost:5136/ContentTypeJSON',
@@ -253,7 +257,7 @@ w.add('JSON body content-type header', async assert => {
 	assert(res.statusCode === 200, res.body.toString());
 });
 
-w.add('Specify core HTTP options', async assert => {
+tests.add('Specify core HTTP options', async assert => {
 	const res = await pp({
 		url: 'http://localhost:5136/ContentTypeJSON',
 		data: {
@@ -266,7 +270,7 @@ w.add('Specify core HTTP options', async assert => {
 	assert(res.statusCode === 200, res.body.toString());
 });
 
-w.add('Ensure that per-request options do not persist within defaults', async assert => {
+tests.add('Ensure that per-request options do not persist within defaults', async assert => {
 	const def = pp.defaults({
 		url: 'http://localhost:5136/get',
 		timeout: 1000
@@ -278,7 +282,7 @@ w.add('Ensure that per-request options do not persist within defaults', async as
 	assert(r1.body.toString() === 'hey' && r2.body.toString() === 'Hi.', `${r1.body} ${r2.body}`);
 });
 
-w.add('Parse empty JSON response', assert => {
+tests.add('Parse empty JSON response', assert => {
 	p({
 		url: 'http://localhost:5136/emptyresponse',
 		method: 'POST',
@@ -292,7 +296,7 @@ w.add('Parse empty JSON response', assert => {
 	});
 });
 
-w.add('Maximum Buffer exceeded', assert => {
+tests.add('Maximum Buffer exceeded', assert => {
 	p({
 		url: 'http://localhost:5136/large',
 		method: 'GET',
