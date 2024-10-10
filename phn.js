@@ -233,9 +233,11 @@ const request = class request {
 				break;
 			};
 
-			if (this.timeoutTime) req.setTimeout(this.timeoutTime, () => {
+			if (this.timeoutTime) req.setTimeout(this.timeoutTime);
+
+			req.on('timeout', (err) => {
 				req.abort();
-				if (!this.streamEnabled) reject(new Error('Timeout reached'));
+				reject(err || new Error('Timeout reached'));
 			});
 
 			req.on('error', (err) => {
