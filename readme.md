@@ -1,6 +1,6 @@
 # phn
 
-A lightweight http client adapted from [phin](https://github.com/ethanent/phin) and [centra](https://github.com/ethanent/centra).
+A lightweight http client adapted from [phin](https://github.com/ethan7g/phin) and [centra](https://github.com/ethan7g/centra).
 
 It works great with `node` and `bun` and comes with optional support for `zstd` compression via `fzstd`.
 
@@ -128,4 +128,4 @@ node-fetch | [![node-fetch package size](https://packagephobia.now.sh/badge?p=no
 
 ## acknowledgement
 
-`phn` is a fork of [phin](https://github.com/ethanent/phin) and [centra](https://github.com/ethanent/centra) by [Ethan Davis](https://github.com/ethanent).
+`phn` is a fork of [phin](https://github.com/ethan7g/phin) and [centra](https://github.com/ethan7g/centra) by [Ethan Davis](https://github.com/ethan7g).
