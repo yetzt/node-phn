@@ -9,9 +9,9 @@ It works great with `node` and `bun` and comes with optional support for `zstd` 
 
 > `npm i phn`
 
-### optional: zstd
+### optional: zstd shim
 
-`phn` supports `zstd` compression if `fzstd` is installed (not included)
+`phn` supports `zstd` compression for node <=22 if `fzstd` is installed (not included)
 
 > `npm i phn fzstd`
 
