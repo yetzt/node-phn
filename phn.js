@@ -6,8 +6,8 @@ const zlib = require('zlib');
 const transformStream = require('stream').Transform;
 const { URL } = require('url');
 
-// optional dependency `fzstd`
-const zstd = (()=>{
+// optional dependency `fzstd` if zlib does not provide zstd
+const zstd = (!!zlib.createZstdDecompress) ? undefined : (()=>{
 	try {
 		return require('fzstd');
 	} catch (err) {
@@ -15,7 +15,7 @@ const zstd = (()=>{
 	}
 })();
 
-const supportedCompressions = `${(zstd||zlib.createZstdDecompress)?'zstd, ':''}br, gzip, deflate`;
+const supportedCompressions = `${(zlib.createZstdDecompress||zstd)?'zstd, ':''}br, gzip, deflate`;
 
 // response class
 const response = class response {
