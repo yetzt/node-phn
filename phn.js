@@ -103,25 +103,25 @@ const phn = async (opts, fn)=>{
 	// form
 	if (opts.form) {
 		this.data = qs.stringify(opts.form);
-		this.reqHeaders["content-type"] = "application/x-www-form-urlencoded";
+		this.headers["content-type"] = "application/x-www-form-urlencoded";
 	};
 
 	// data
 	if (opts.data) {
 		if (typeof opts.data === "object" && !Buffer.isBuffer(opts.data) && !ArrayBuffer.isView(opts.data)) { // json
 			this.data = JSON.stringify(opts.data);
-			this.reqHeaders["content-type"] = "application/json";
+			this.headers["content-type"] = "application/json";
 		} else {
 			this.data = opts.data;
-			if (!this.reqHeaders["content-type"]) this.reqHeaders["content-type"] = "application/octet-stream";
+			if (!this.headers["content-type"]) this.headers["content-type"] = "application/octet-stream";
 		}
 	};
 
 	// set content-length
-	if (this.data && !this.reqHeaders["content-length"]) this.reqHeaders["content-length"] = Buffer.byteLength(this.data);
+	if (this.data && !this.headers["content-length"]) this.headers["content-length"] = Buffer.byteLength(this.data);
 
 	// compression, set unless explicitly off
-	if ((!("compression" in opts) || !!opts.compression) && !this.reqHeaders["accept-encoding"]) this.reqHeaders["accept-encoding"] = (typeof opts.compression === "string") ? opts.compression : supportedCompression;
+	if ((!("compression" in opts) || !!opts.compression) && !this.headers["accept-encoding"]) this.headers["accept-encoding"] = (typeof opts.compression === "string") ? opts.compression : supportedCompression;
 
 	// send request
 	let { transport, req, res, stream, client } = await new Promise(async (resolve, reject)=>{
@@ -133,7 +133,7 @@ const phn = async (opts, fn)=>{
 			"port": this.url.port,
 			"path": this.url.pathname + (this.url.search === null ? "" : this.url.search),
 			"method": this.method,
-			"headers": this.reqHeaders
+			"headers": this.headers
 		}, opts.core);
 
 		let req;
