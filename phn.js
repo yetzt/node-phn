@@ -88,14 +88,14 @@ const phn = async (opts, fn)=>{
 	this.data = null;
 
 	// assign maximum buffer size
-	this.maxBuffer = parseInt(opts.maxBuffer,10) || 5e7;
+	this.maxBuffer = parseInt(opts.maxBuffer,10) || Infinity;
 
 	// http2 options
 	this.http2core = (typeof opts.http2 === "object") ? opts.http2 : {};
 
 	// headers
-	this.reqHeaders = {};
-	if (opts.headers) for (const [k,v] of Object.entries(opts.headers)) this.reqHeaders[k.toLowerCase()] = v;
+	this.headers = {};
+	if (opts.headers) for (const [k,v] of Object.entries(opts.headers)) this.headers[k.toLowerCase()] = v;
 
 	// query
 	if (opts.query) for (const [k,v] of Object.entries(opts.headers)) this.url.searchParams.append(k,v);
