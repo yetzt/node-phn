@@ -1,6 +1,6 @@
 # phn
 
-a lightweight http client that works great with `node` and `bun`.
+a lightweight http client that works great with `node` and `bun`
 
 * http2 support
 * works with async/await and callbacks
