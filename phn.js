@@ -37,6 +37,7 @@ const createZstdDecompress = zlib.createZstdDecompress || (()=>{
 	};
 })();
 
+// find available encodings
 const supportedCompression = [
 	(!!createZstdDecompress && "zstd"),
 	(!!zlib.createBrotliDecompress && "br"),
@@ -62,16 +63,16 @@ async function alpn(url) {
 	});
 };
 
-// helper: http2 client
-const http2Clients = {};
-async function http2Client(url, opts){
-	if (url.origin in http2Clients && !http2Clients[url.origin].destroyed && !http2Clients[url.origin].closed && !http2Clients[url.origin].destroying) return http2Clients[url.origin];
-	return (http2Clients[url.origin] = http2.connect(`${url.origin}`, opts));
+// helper: http2 sessions
+const http2Sessions = {};
+async function http2Session(url, opts){
+	if (url.origin in http2Sessions && !http2Sessions[url.origin].destroyed && !http2Sessions[url.origin].closed && !http2Sessions[url.origin].destroying) return http2Sessions[url.origin];
+	return (http2Sessions[url.origin] = http2.connect(`${url.origin}`, opts));
 };
 
-// clean up clients on exit
+// clean up sessions on exit
 process.on("exit", ()=>{
-	for (const client of Object.values(http2Clients)) client.close();
+	for (const client of Object.values(http2Sessions)) client.close();
 });
 
 // phn
@@ -84,7 +85,7 @@ const phn = async (opts, fn)=>{
 	if (!("url" in opts) || !opts.url) throw new Error("Missing url option from options for request method.");
 
 	this.url = (typeof opts.url === "string") ? new URL(opts.url) : opts.url;
-	this.method = (opts.method || "GET");
+	this.method = (opts.method || "get").toUpperCase();
 	this.data = null;
 
 	// assign maximum buffer size
@@ -126,7 +127,7 @@ const phn = async (opts, fn)=>{
 	// send request
 	let { transport, req, res, stream, client } = await new Promise(async (resolve, reject)=>{
 
-		// assemble options
+		// assemble options for http1
 		const options = Object.assign({
 			"protocol": this.url.protocol,
 			"host": this.url.hostname.replace("[", "").replace("]", ""),
@@ -148,7 +149,7 @@ const phn = async (opts, fn)=>{
 				if (http2 && (!("http2" in opts) || !!opts.http2) && ("h2" === await alpn(this.url))) {
 
 					// new http2 session
-					const client = await http2Client(this.url, this.coreOptions);
+					const client = await http2Session(this.url, this.coreOptions);
 
 					// reference socket
 					client.socket.ref();
@@ -169,15 +170,15 @@ const phn = async (opts, fn)=>{
 
 			break;
 			default:
-				return reject(new Error(`Bad URL protocol: ${this.url.protocol}`));
+				return reject(new Error(`Bad protocol: ${this.url.protocol}`));
 			break;
 		};
 
 		// handle timeout
 		if (opts.timeout) req.setTimeout(opts.timeout);
 		req.on("timeout", ()=>{
-			req.abort();
 			reject(new Error("Timeout reached"));
+			req.abort();
 		});
 
 		// handle error
@@ -192,7 +193,7 @@ const phn = async (opts, fn)=>{
 	});
 
 	// follow redirects
-	if ("location" in res.headers && opts.followRedirects) {
+	if ("location" in res.headers && (opts.follow || opts.followRedirects)) {
 		// limit the number of redirects
 		if (opts.maxRedirects && ++opts.redirected > opts.maxRedirects) throw new Error("Exceeded the maximum number of redirects");
 		opts.url = (new URL(res.headers["location"], opts.url)).toString();
@@ -201,7 +202,7 @@ const phn = async (opts, fn)=>{
 
 	// check content-length header against maxBuffer
 	if (res.headers["content-length"] && parseInt(res.headers["content-length"],10) > this.maxBuffer) {
-		throw new Error(`Content length exceeds maxBuffer. (${res.headers["content-length"]} bytes)`);
+		throw new Error(`Content length exceeds maxBuffer: ${res.headers["content-length"]}b`);
 	};
 
 	// decompress
@@ -220,32 +221,32 @@ const phn = async (opts, fn)=>{
 		break;
 	};
 
-	// IDEA: iconv decode?
+	// IDEA: iconv decode via iconv-lite shim?
 
 	// deliver stream if requested
 	if (opts.stream) {
-		if (client && "unref" in client) client.unref();
+		client?.unref?.();
 		return { ...res, req, transport, stream, statusCode: res.statusCode };
 	};
 
 	// assemble body
 	let body = await new Promise((resolve,reject)=>{
-		let body = Buffer.alloc(0);
+		let b = Buffer.alloc(0);
 
 		stream.on("error", err=>reject(err));
 		stream.on("aborted", ()=>reject(new Error("Server aborted request")));
 
 		stream.on("data", chunk=>{
-			body = Buffer.concat([body, chunk]);
-			if (body.length > opts.maxBuffer) {
-				reject(new Error(`Received a response which was longer than acceptable when buffering. (${res.headers["content-length"]} bytes)`));
+			b = Buffer.concat([b, chunk]);
+			if (b.length > opts.maxBuffer) {
+				reject(new Error(`Content length exceeds maxBuffer: ${res.headers["content-length"]}b`));
 				stream.destroy();
 			};
 		});
 
 		stream.on("end", ()=>{
-			if (client && "unref" in client) client.unref();
-			resolve(body);
+			client?.unref?.();
+			resolve(b);
 		});
 
 	});
