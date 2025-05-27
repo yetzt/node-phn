@@ -1,12 +1,12 @@
 # phn
 
-A lightweight http client that works great with `node` and `bun`.
+a lightweight http client that works great with `node` and `bun`.
 
 * http2 support
-* compression support including
-*
-* works with `async/await` and callbacks
+* works with async/await and callbacks
+* compression support
 * fallback zstd support via [fzstd](https://www.npmjs.com/package/fzstd) when installed
+* 200% test coverage (we run them at least twice)
 
 ## install
 
@@ -24,20 +24,19 @@ const res = await phn({
 
 ### options
 
-* `url` - URL to request
-* `method` - HTTP method, default: `GET`
-* `core` - options passed on to `http(s).request`
-* `http2` - options passed on to `http2.request`, set to false to diable http2 support
-* `agent` - use http(s) agent. // FIXME implement
-* `headers` - HTTP headers object
-* `query` - Object to be added to `url` as query string
-* `data` - Request body; json, buffer or object containing form data
-* `form` - object containing form data
-* `parse` - parse response body as `json` or `string` or bring your own parse function
-* `followRedirects` - follow redirects if `true`
-* `maxRedirects` - maximum number of redirects to follow, default: infinite
+* `method` - string; default: `GET`
+* `url` - string or url object
+* `core` - object; passed on to `http(s).request`
+* `http2` - object; passed on to `http2.request`; `false` to diable http2 support
+* `headers` - object; request headers
+* `query` - object; added to `url` as query string
+* `data` - object, buffer, typed array; sent as data in POST request
+* `form` - object; sent as `application/x-www-form-urlencoded`
+* `parse` - `json` or `string` or function; parse response body
+* `follow` - follow redirects if `true`
+* `maxRedirects` - maximum number of redirects
 * `stream` - return stream as `res.stream` instead of `res.body`
-* `compression` - handle compression, accept `br`, `gzip` and `deflate`, also `zstd` if `fzstd` package is installed. string overrides `accept-encoding` header
+* `compression` - bool or string, string overrides `accept-encoding` header
 * `timeout` -  request timeout in milliseconds
 * `maxBuffer` -  maximum response buffer size
 
@@ -76,7 +75,7 @@ await phn({
 
 ### unpromisified
 
-get a classic callback interface
+builtin classic callback interface
 
 ``` js
 const phn = require("phn");
