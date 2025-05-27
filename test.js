@@ -1,5 +1,4 @@
-const p = require('./phn.js').unpromisified
-const pp = require('./phn.js')
+const p = require('./phn.js')
 const http = require('http');
 const qs = require('querystring');
 
@@ -35,13 +34,13 @@ const run = (i = 0) => {
 
 // defaults
 tests.add('Defaults', assert => {
-	pp.defaults({ method: 'POST' })('http://localhost:5136/post').then(res=>assert(res.req.method === "POST", `Defaults not applied`)).catch(err=>assert(false, err));
+	p.defaults({ method: 'POST' })('http://localhost:5136/post').then(res=>assert(res.req.method === "POST", `Defaults not applied`)).catch(err=>assert(false, err));
 });
 
 // missing opts
 tests.add('Missing Options', assert => {
 	try {
-		pp().then(res=>assert(false, `No Error`)).catch(err=>assert(true, "Error received"));
+		p().then(res=>assert(false, `No Error`)).catch(err=>assert(true, "Error received"));
 	} catch (err) {
 		assert(false, "Error caught")
 	}
@@ -56,14 +55,14 @@ tests.add('Callback Interface', assert => {
 });
 
 tests.add('Promise Interface', assert => {
-	pp('http://localhost:5136/get').then(res=>{
+	p('http://localhost:5136/get').then(res=>{
 		assert(res.statusCode === 200 && res.body.toString() === 'Hi.', `Received unexpected data. Status code: ${res.statusCode}`);
 	}).catch(err=>assert(false, err));
 });
 
 tests.add('async Interface', async assert => {
 	try {
-		const res = await pp('http://localhost:5136/get');
+		const res = await p('http://localhost:5136/get');
 		assert(res.statusCode === 200 && res.body.toString() === 'Hi.', `Received unexpected data. Status code: ${res.statusCode}`);
 	} catch (err) {
 		assert(false, err);
@@ -82,7 +81,7 @@ tests.add('POST request with body', assert => {
 });
 
 tests.add('Promisified phin requesting', assert => {
-	pp({
+	p({
 		url: 'http://localhost:5136/get',
 		method: 'GET'
 	}).then(res => assert(res.body.toString() === 'Hi.', 'Promisified phin did not properly send data to handler.')).catch(err => assert(false, err));
@@ -247,7 +246,7 @@ tests.add('Stream data from server', assert => {
 });
 
 tests.add('Defaults with just URL', async assert => {
-	const ppost = pp.defaults({
+	const ppost = p.defaults({
 		method: 'POST'
 	});
 	const res = await ppost('http://localhost:5136/simplepost');
@@ -255,7 +254,7 @@ tests.add('Defaults with just URL', async assert => {
 });
 
 tests.add('Defaults with object options', async assert => {
-	const ppost = pp.defaults({
+	const ppost = p.defaults({
 		method: 'POST'
 	});
 	const res = await ppost({
@@ -265,7 +264,7 @@ tests.add('Defaults with object options', async assert => {
 });
 
 tests.add('Buffer body', async assert => {
-	const res = await pp({
+	const res = await p({
 		method: 'POST',
 		url: 'http://localhost:5136/post',
 		data: Buffer.from('Hey there!')
@@ -274,7 +273,7 @@ tests.add('Buffer body', async assert => {
 });
 
 tests.add('JSON body content-type header', async assert => {
-	const res = await pp({
+	const res = await p({
 		method: 'POST',
 		url: 'http://localhost:5136/ContentTypeJSON',
 		data: {
@@ -285,7 +284,7 @@ tests.add('JSON body content-type header', async assert => {
 });
 
 tests.add('Specify core HTTP options', async assert => {
-	const res = await pp({
+	const res = await p({
 		url: 'http://localhost:5136/ContentTypeJSON',
 		data: {
 			hey: 'hi'
@@ -298,7 +297,7 @@ tests.add('Specify core HTTP options', async assert => {
 });
 
 tests.add('Ensure that per-request options do not persist within defaults', async assert => {
-	const def = pp.defaults({
+	const def = p.defaults({
 		url: 'http://localhost:5136/get',
 		timeout: 1000
 	});
@@ -332,6 +331,75 @@ tests.add('Maximum Buffer exceeded', assert => {
 	}, (err, res) => {
 		assert(err && /longer than acceptable|exceeds maxBuffer/.test(err.message), 'Request exceeding maximum Buffer size was not aborted');
 	});
+});
+
+tests.add('No content-length, streamed body', assert => {
+	p({
+		url: 'http://localhost:5136/chunked',
+		method: 'GET',
+		stream: true,
+		timeout: 1000,
+	}, (err, res) => {
+		assert(!err && res.stream.readable, 'Stream should be readable even with no content-length');
+	});
+});
+
+tests.add('HTTP/2 basic GET request', async assert => {
+	const res = await p({
+		url: 'https://nghttp2.org/httpbin/get', // Publicly available HTTP/2 test endpoint
+		http2: true,
+		timeout: 3000,
+		parse: 'json'
+	});
+	assert(res.statusCode === 200 && res.body.url === 'https://nghttp2.org/httpbin/get', 'Failed HTTP/2 GET request');
+});
+
+
+tests.add('HTTP/2 POST with JSON body', async assert => {
+	const res = await p({
+		url: 'https://nghttp2.org/httpbin/post',
+		method: 'POST',
+		http2: true,
+		data: { test: true },
+		timeout: 3000,
+		parse: 'json'
+	});
+	assert(res.statusCode === 200 && res.body.json.test === true, 'Failed HTTP/2 POST with JSON body');
+});
+
+tests.add('HTTP/2 requested but not supported by server', async assert => {
+	try {
+		const res = await p({
+			url: 'http://localhost:5136/get',
+			http2: true,
+			timeout: 1000
+		});
+		assert(res.transport === "http", 'Should have fallen back or failed');
+	} catch (err) {
+		assert(/Bad URL protocol|fallback/i.test(err.message), 'Did not handle lack of HTTP/2 correctly');
+	}
+});
+
+tests.add('HTTP/2 disabled', async assert => {
+	const res = await p({
+		url: 'https://nghttp2.org/httpbin/get',
+		http2: false,
+		timeout: 3000,
+		parse: 'json'
+	});
+	assert(res.transport !== 'http2', 'Should not have used http2');
+});
+
+tests.add('HTTP/2 persistent connection reuse', async assert => {
+	const opts = {
+		url: 'https://nghttp2.org/httpbin/get',
+		http2: true,
+		timeout: 3000,
+		parse: 'json'
+	};
+	const res1 = await p(opts);
+	const res2 = await p(opts);
+	assert(res1.statusCode === 200 && res2.statusCode === 200, 'Did not reuse HTTP/2 session');
 });
 
 // HTTP Server
