@@ -33,12 +33,41 @@ const run = (i = 0) => {
 	}
 };
 
+// defaults
+tests.add('Defaults', assert => {
+	pp.defaults({ method: 'POST' })('http://localhost:5136/post').then(res=>assert(res.req.method === "POST", `Defaults not applied`)).catch(err=>assert(false, err));
+});
+
+// missing opts
+tests.add('Missing Options', assert => {
+	try {
+		pp().then(res=>assert(false, `No Error`)).catch(err=>assert(true, "Error received"));
+	} catch (err) {
+		assert(false, "Error caught")
+	}
+});
+
 // Define test cases
-tests.add('Simple GET request', assert => {
+tests.add('Callback Interface', assert => {
 	p('http://localhost:5136/get', (err, res) => {
-		if(err) return assert(false, err);
+		if (err) return assert(false, err);
 		assert(res.statusCode === 200 && res.body.toString() === 'Hi.', `Received unexpected data. Status code: ${res.statusCode}`);
 	});
+});
+
+tests.add('Promise Interface', assert => {
+	pp('http://localhost:5136/get').then(res=>{
+		assert(res.statusCode === 200 && res.body.toString() === 'Hi.', `Received unexpected data. Status code: ${res.statusCode}`);
+	}).catch(err=>assert(false, err));
+});
+
+tests.add('async Interface', async assert => {
+	try {
+		const res = await pp('http://localhost:5136/get');
+		assert(res.statusCode === 200 && res.body.toString() === 'Hi.', `Received unexpected data. Status code: ${res.statusCode}`);
+	} catch (err) {
+		assert(false, err);
+	}
 });
 
 tests.add('POST request with body', assert => {
@@ -63,7 +92,8 @@ tests.add('Timeout option', assert => {
 	p({
 		url: 'http://localhost:5136/slowres',
 		method: 'GET',
-		timeout: 500
+		timeout: 100,
+		http2: false,
 	}, (err) => {
 		if(err && /timeout/gi.test(err.toString())) {
 			return assert(true, 'Request timed out properly.');
@@ -174,7 +204,8 @@ tests.add('Compression', assert => {
 	});
 });
 
-tests.add('Compression zstd', assert => {
+// bun does not suport zstd yet
+if (typeof Bun === "undefined") tests.add('Compression zstd', assert => {
 	p({
 		url: 'http://localhost:5136/compressed-zstd',
 		method: 'GET',
@@ -202,7 +233,7 @@ if (typeof Bun === "undefined") tests.add('Stream data from server', assert => {
 		url: 'http://localhost:5136/chunked',
 		method: 'GET',
 		stream: true,
-		timeout: 500
+		timeout: 500,
 	}, (err, res) => {
 		if (err) return assert(false, err);
 		if (res?.stream) {
@@ -301,7 +332,7 @@ tests.add('Maximum Buffer exceeded', assert => {
 		timeout: 500,
 		maxBuffer: 5e2
 	}, (err, res) => {
-		assert(err && /longer than acceptable/.test(err.message), 'Request exceeding maximum Buffer size was not aborted');
+		assert(err && /longer than acceptable|exceeds maxBuffer/.test(err.message), 'Request exceeding maximum Buffer size was not aborted');
 	});
 });
 

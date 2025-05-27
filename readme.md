@@ -1,15 +1,15 @@
 # phn
 
-A lightweight http client adapted from [phin](https://github.com/ethan7g/phin) and [centra](https://github.com/ethan7g/centra).
+A lightweight http client that works great with `node` and `bun`.
 
-It works great with `node` and `bun`.
+* http2 support
+* compression support including
+*
+* works with `async/await` and callbacks
 
 ## install
 
 > `npm i phn`
-
-> `npm i phn fzstd`
-
 
 ## usage
 
@@ -25,19 +25,20 @@ const res = await phn({
 
 * `url` - URL to request
 * `method` - HTTP method, default: `GET`
+* `core` - options passed on to `http(s).request`
+* `http2` - options passed on to `http2.request`, set to false to diable http2 support
+* `agent` - use http(s) agent. // FIXME implement
 * `headers` - HTTP headers object
 * `query` - Object to be added to `url` as query string
 * `data` - Request body; json, buffer or object containing form data
 * `form` - object containing form data
-* `core` - options passed on to `http(s).request`
-* `parse` - parse response body as `json` or `string`
+* `parse` - parse response body as `json` or `string` or bring your own parse function
 * `followRedirects` - follow redirects if `true`
 * `maxRedirects` - maximum number of redirects to follow, default: infinite
 * `stream` - return stream as `res.stream` instead of `res.body`
 * `compression` - handle compression, accept `br`, `gzip` and `deflate`, also `zstd` if `fzstd` package is installed. string overrides `accept-encoding` header
 * `timeout` -  request timeout in milliseconds
 * `maxBuffer` -  maximum response buffer size
-* `http2` - use http2 if available, default `true`
 
 ### stream
 
@@ -77,7 +78,7 @@ await phn({
 get a classic callback interface
 
 ``` js
-const phn = require("phn").unpromisified;
+const phn = require("phn");
 
 phn('https://example.org/', (err, res) => {
 	if (!err) console.log(res.body);
@@ -124,4 +125,4 @@ Package | Size
 
 ## acknowledgement
 
-`phn` is a fork of [phin](https://github.com/ethan7g/phin) and [centra](https://github.com/ethan7g/centra) by [Ethan Davis](https://github.com/ethan7g).
+`phn` has evolved from a fork of [phin](https://github.com/ethan7g/phin) and [centra](https://github.com/ethan7g/centra) by [Ethan Davis](https://github.com/ethan7g).

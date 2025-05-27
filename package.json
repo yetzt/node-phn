@@ -1,31 +1,42 @@
 {
   "name": "phn",
-  "type": "commonjs",
   "version": "0.2.0",
-  "description": "a lightweight http client",
+  "type": "commonjs",
+  "description": "A lightweight HTTP/HTTPS/HTTP2 client for Node.js",
   "main": "phn.js",
+  "exports": {
+    ".": "./phn.js"
+  },
   "scripts": {
     "test": "node test.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yetzt/node-phn.git"
+    "url": "https://github.com/yetzt/node-phn.git"
   },
+  "bugs": {
+    "url": "https://github.com/yetzt/node-phn/issues"
+  },
+  "homepage": "https://github.com/yetzt/node-phn#readme",
   "keywords": [
     "http",
     "https",
     "http2",
     "request",
+    "client",
     "fetch",
-    "ajax",
     "url",
     "uri",
+    "ajax",
     "phin",
-    "centra"
+    "centra",
+    "lightweight",
+    "streaming"
   ],
   "author": "yetzt",
   "license": "MIT",
   "engines": {
-    "node": ">= 12"
+    "node": ">=14",
+    "bun": ">=1.2"
   }
 }
