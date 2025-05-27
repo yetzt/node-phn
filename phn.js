@@ -6,11 +6,39 @@ const tls = require("node:tls");
 
 const qs = require("node:querystring");
 const zlib = require("node:zlib");
-const transformStream = require("node:stream").Transform;
 const { URL } = require("node:url");
 
+// shim for zstd, uses fzstd if installed
+const createZstdDecompress = zlib.createZstdDecompress || (()=>{
+	try {
+		const fzstd = require("fzstd");
+		const transformStream = require("node:stream").Transform;
+		return ()=>{
+			return new transformStream({
+				transform(chunk, encoding, fn) {
+					try {
+						if (!this.zstd) this.zstd = new fzstd.Decompress((ch, end) => {
+							this.push(ch);
+							if (end) this.push(null);
+						});
+						this.zstd.push(chunk);
+						fn();
+					} catch (err) {
+						fn(err);
+					};
+				},
+				flush() {
+					this.zstd.push(Buffer.alloc(0), true);
+				}
+			});
+		};
+	} catch (err) {
+		return null;
+	};
+})();
+
 const supportedCompression = [
-	(!!zlib.createZstdDecompress && "zstd"),
+	(!!createZstdDecompress && "zstd"),
 	(!!zlib.createBrotliDecompress && "br"),
 	(!!zlib.createGunzip && "gzip"),
 	(!!zlib.createInflate && "deflate")
@@ -179,7 +207,7 @@ const phn = async (opts, fn)=>{
 	// decompress
 	switch (res.headers["content-encoding"]) {
 		case "zstd":
-			stream = stream.pipe(zlib.createZstdDecompress());
+			stream = stream.pipe(createZstdDecompress());
 		break;
 		case "br":
 			stream = stream.pipe(zlib.createBrotliDecompress());

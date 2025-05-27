@@ -6,6 +6,7 @@ A lightweight http client that works great with `node` and `bun`.
 * compression support including
 *
 * works with `async/await` and callbacks
+* fallback zstd support via [fzstd](https://www.npmjs.com/package/fzstd) when installed
 
 ## install
 
