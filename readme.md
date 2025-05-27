@@ -2,16 +2,11 @@
 
 A lightweight http client adapted from [phin](https://github.com/ethan7g/phin) and [centra](https://github.com/ethan7g/centra).
 
-It works great with `node` and `bun` and comes with optional support for `zstd` compression via `fzstd`.
-
+It works great with `node` and `bun`.
 
 ## install
 
 > `npm i phn`
-
-### optional: zstd shim
-
-`phn` supports `zstd` compression for node <=22 if `fzstd` is installed (not included)
 
 > `npm i phn fzstd`
 
@@ -42,6 +37,7 @@ const res = await phn({
 * `compression` - handle compression, accept `br`, `gzip` and `deflate`, also `zstd` if `fzstd` package is installed. string overrides `accept-encoding` header
 * `timeout` -  request timeout in milliseconds
 * `maxBuffer` -  maximum response buffer size
+* `http2` - use http2 if available, default `true`
 
 ### stream
 
@@ -50,13 +46,13 @@ consume http response as stream
 ``` js
 const phn = require("phn");
 
-const stream = await phn({
+const resp = await phn({
 	url: 'https://example.org/',
 	compression: true,
 	stream: true,
 });
 
-stream.pipe(/* ... */)
+resp.stream.pipe(/* ... */)
 
 ```
 

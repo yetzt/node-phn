@@ -1,21 +1,50 @@
-const path = require('path');
-const http = require('http');
-const https = require('https');
-const qs = require('querystring');
-const zlib = require('zlib');
-const transformStream = require('stream').Transform;
-const { URL } = require('url');
+const path = require("node:path");
+const http = require("node:http");
+const https = require("node:https");
+const http2 = require("node:http2");
+const tls = require("node:tls");
 
-// optional dependency `fzstd` if zlib does not provide zstd
-const zstd = (!!zlib.createZstdDecompress) ? undefined : (()=>{
-	try {
-		return require('fzstd');
-	} catch (err) {
-		return undefined;
-	}
-})();
+const qs = require("node:querystring");
+const zlib = require("node:zlib");
+const transformStream = require("node:stream").Transform;
+const { URL } = require("node:url");
 
-const supportedCompressions = `${(zlib.createZstdDecompress||zstd)?'zstd, ':''}br, gzip, deflate`;
+const supportedCompression = [
+	(!!zlib.createZstdDecompress && "zstd"),
+	(!!zlib.createBrotliDecompress && "br"),
+	(!!zlib.createGunzip && "gzip"),
+	(!!zlib.createInflate && "deflate")
+].filter(Boolean).join(", ");
+
+// helper: alpn request
+const alpnCache = {};
+async function alpn(url) {
+	return new Promise((resolve) => {
+		if (alpnCache[url.origin]) return resolve(alpnCache[url.origin]);
+		const socket = tls.connect({
+			host: url.hostname,
+			port: url.port || 443,
+			servername: url.hostname,
+			ALPNProtocols: ['h2', 'http/1.1'],
+		}, () => {
+			alpnCache[url.origin] = socket.alpnProtocol;
+			resolve(socket.alpnProtocol);
+			socket.destroy();
+		});
+	});
+};
+
+// helper: http2 client
+const http2Clients = {};
+async function http2Client(url, opts){
+	if (url.origin in http2Clients && !http2Clients[url.origin].destroyed && !http2Clients[url.origin].closed && !http2Clients[url.origin].destroying) return http2Clients[url.origin];
+	return (http2Clients[url.origin] = http2.connect(`${url.origin}`, opts));
+};
+
+// clean up clients on exit
+process.on("exit", ()=>{
+	for (const client of Object.values(http2Clients)) client.close();
+});
 
 // response class
 const response = class response {
@@ -47,21 +76,28 @@ const response = class response {
 // request class
 const request = class request {
 
-	constructor (url, method = 'GET') {
+	constructor(url, method = 'GET') {
 		this.url = (typeof url === 'string') ? new URL(url) : url;
 		this.method = method;
 		this.data = null;
 		this.sendDataAs = null;
 		this.reqHeaders = {};
 		this.streamEnabled = false;
-		this.compressionEnabled = false;
 		this.timeoutTime = null;
 		this.coreOptions = {};
-		this.resOptions = { maxBuffer: 5e7 };;
+		this.resOptions = { maxBuffer: 5e7 };
+		this.config = { http2: true };
+
+		// enable compression if supported
+		if (supportedCompression) {
+			this.compressionEnabled = true;
+			this.header('accept-encoding', supportedCompression);
+		};
+
 		return this;
 	};
 
-	query (key, value) {
+	query(key, value) {
 		if (typeof key === 'object') Object.entries(key).forEach(([queryKey, queryValue])=>{
 			this.url.searchParams.append(queryKey, queryValue);
 		});
@@ -69,12 +105,12 @@ const request = class request {
 		return this;
 	};
 
-	path (relativePath) {
+	path(relativePath) {
 		this.url.pathname = path.join(this.url.pathname, relativePath);
 		return this;
 	};
 
-	body (data, sendAs) {
+	body(data, sendAs) {
 		this.sendDataAs = (sendAs) ? sendAs.toLowerCase() : (typeof data === 'object' && !Buffer.isBuffer(data)) ? 'json' : 'buffer';
 
 		switch (this.sendDataAs) {
@@ -91,41 +127,46 @@ const request = class request {
 		return this;
 	};
 
-	header (key, value) {
-		if (typeof key === 'object') Object.entries(key).forEach(([headerName, headerValue]) => {
+	header(key, value) {
+		if (typeof key === 'object') Object.entries(key).forEach(([headerName, headerValue])=>{
 			this.reqHeaders[headerName.toLowerCase()] = headerValue;
 		}); else this.reqHeaders[key.toLowerCase()] = value;
 		return this;
 	};
 
-	timeout (timeout) {
+	timeout(timeout) {
 		this.timeoutTime = timeout;
 		return this;
 	};
 
-	option (name, value) {
+	option(name, value) {
 		this.coreOptions[name] = value;
 		return this;
 	};
 
-	resOption (name, value) {
+	configure(name, value) {
+		this.config[name] = value;
+		return this;
+	};
+
+	resOption(name, value) {
 		this.resOptions[name] = value;
 		return this;
 	};
 
-	stream () {
+	stream() {
 		this.streamEnabled = true;
 		return this;
 	};
 
-	compress (compressions) {
-		this.compressionEnabled = true;
-		if (!this.reqHeaders['accept-encoding']) this.reqHeaders['accept-encoding'] = (typeof compressions === "string") ? compressions : supportedCompressions;
+	compress(compressions) {
+		this.compressionEnabled = !!compressions; // oof
+		if (!this.reqHeaders['accept-encoding']) this.reqHeaders['accept-encoding'] = (typeof compressions === "string") ? compressions : supportedCompression;
 		return this;
 	};
 
 	send () {
-		return new Promise((resolve, reject) => {
+		return new Promise(async (resolve, reject)=>{
 			if (this.data) {
 				if (!this.reqHeaders.hasOwnProperty('content-type')) {
 					switch (this.sendDataAs) {
@@ -154,59 +195,43 @@ const request = class request {
 
 			let req;
 
-			const resHandler = (res) => {
-				let stream = res;
+			const resHandler = (res, stream, socket)=>{
 
 				if (this.compressionEnabled) {
 					switch (res.headers['content-encoding']) {
 						case "zstd":
-							// i wish fzstd had a proper stream implementaion
-							stream = res.pipe(zlib.createZstdDecompress ? zlib.createZstdDecompress() : new transformStream({
-								transform(chunk, encoding, fn) {
-									try {
-										if (!this.zstd) this.zstd = new zstd.Decompress((ch,end)=>{
-											this.push(ch);
-											if (end) this.push(null);
-										});
-										this.zstd.push(chunk);
-										fn();
-									} catch (err) {
-										fn(err);
-									}
-								},
-								flush() {
-									this.zstd.push(Buffer.alloc(0), true);
-								},
-							}));
+							stream = stream.pipe(zlib.createZstdDecompress());
 						break;
 						case "br":
-							stream = res.pipe(zlib.createBrotliDecompress());
+							stream = stream.pipe(zlib.createBrotliDecompress());
 						break;
 						case "gzip":
-							stream = res.pipe(zlib.createGunzip());
+							stream = stream.pipe(zlib.createGunzip());
 						break;
 						case "deflate":
-							stream = res.pipe(zlib.createInflate());
+							stream = stream.pipe(zlib.createInflate());
 						break;
 					};
 				};
 
 				if (this.streamEnabled) {
 					res.stream = stream;
-					return resolve(res);
+					resolve(res);
+					if (socket) socket.unref();
+					return;
 				};
 
 				let resp = new response(res, this.resOptions);
 
-				stream.on('error', err => {
+				stream.on('error', err=>{
 					reject(err);
 				});
 
-				stream.on('aborted', () => {
+				stream.on('aborted', ()=>{
 					reject(new Error('Server aborted request'));
 				});
 
-				stream.on('data', chunk => {
+				stream.on('data', chunk=>{
 					resp._addChunk(chunk);
 
 					if (this.resOptions.maxBuffer !== null && resp.body.length > this.resOptions.maxBuffer) {
@@ -215,18 +240,40 @@ const request = class request {
 					};
 				});
 
-				stream.on('end', () => {
+				stream.on('end', ()=>{
 					resolve(resp);
+					if (socket) socket.unref();
 				});
 
 			};
 
 			switch (this.url.protocol) {
 				case 'https:':
-					req = https.request(options, resHandler);
+					if (http2 && this.config.http2 && ("h2" === await alpn(this.url))) {
+
+						const client = await http2Client(this.url, this.coreOptions);
+
+						// reference socket
+						client.socket.ref();
+
+						req = client.request({
+							':method': this.method,
+							':path': this.url.pathname + this.url.search,
+							...this.reqHeaders
+						});
+
+						req.on('response', (headers) => {
+							const res = { headers, statusCode: headers[':status'] };
+							resHandler(res, req, client.socket);
+						});
+
+					} else {
+						req = https.request(options, res=>resHandler(res, res));
+					};
+
 				break;
 				case 'http:':
-					req = http.request(options, resHandler);
+					req = http.request(options, res=>resHandler(res, res));
 				break;
 				default:
 					reject(new Error('Bad URL protocol: ' + this.url.protocol));
@@ -235,12 +282,12 @@ const request = class request {
 
 			if (this.timeoutTime) req.setTimeout(this.timeoutTime);
 
-			req.on('timeout', (err) => {
+			req.on('timeout', err=>{
 				req.abort();
 				reject(err || new Error('Timeout reached'));
 			});
 
-			req.on('error', (err) => {
+			req.on('error', err=>{
 				reject(err);
 			});
 
@@ -251,46 +298,18 @@ const request = class request {
 	};
 };
 
-/**
-* phn options object. phn also supports all options from <a href="https://nodejs.org/api/http.html#http_http_request_options_callback">http.request(options, callback)</a> by passing them on to this method (or similar).
-* @typedef {Object} phnOptions
-* @property {string} url - URL to request (autodetect infers from this URL)
-* @property {string} [method=GET] - Request method ('GET', 'POST', etc.)
-* @property {Object} [query] - Object to be added as a query string to the URL
-* @property {string|Buffer|object} [data] - Data to send as request body (phn may attempt to convert this data to a string if it isn't already)
-* @property {Object} [form] - Object to send as form data (sets 'Content-Type' and 'Content-Length' headers, as well as request body) (overwrites 'data' option if present)
-* @property {Object} [headers={}] - Request headers
-* @property {Object} [core={}] - Custom core HTTP options
-* @property {string} [parse=none] - Response parsing. Errors will be given if the response can't be parsed. 'none' returns body as a `Buffer`, 'json' attempts to parse the body as JSON, and 'string' attempts to parse the body as a string
-* @property {boolean} [followRedirects=false] - Enable HTTP redirect following
-* @property {Number} [maxRedirects=0] - Maximum number of redirects to follow. (0 = Infinite)
-* @property {boolean} [stream=false] - Enable streaming of response. (Removes body property)
-* @property {boolean|string} [compression=false] - Enable compression for request, specify accept-encoding header
-* @property {?number} [timeout=null] - Request timeout in milliseconds
-* @property {?maxBuffer} [maxBuffer=5e7] - Maximum response buffer size
-* @property {string} [hostname=autodetect] - URL hostname
-* @property {Number} [port=autodetect] - URL port
-* @property {string} [path=autodetect] - URL path
-*/
+// phn
+const phn = async (opts, fn)=>{
 
-/**
-* Response data
-* @callback phnResponseCallback
-* @param {?(Error|string)} error - Error if any occurred in request, otherwise null.
-* @param {?http.serverResponse} phnResponse - phn response object. Like <a href='https://nodejs.org/api/http.html#http_class_http_serverresponse'>http.ServerResponse</a> but has a body property containing response body, unless stream. If stream option is enabled, a stream property will be provided to callback with a readable stream.
-*/
+	// callback compat
+	if (typeof fn === "function") return await phn(opts).then(data=>(fn(null, data))).catch(fn);
 
-/**
-* Sends an HTTP request
-* @param {phnOptions|string} options - phn options object (or string for auto-detection)
-* @returns {Promise<http.serverResponse>} - phn-adapted response object
-*/
-const phn = async (opts) => {
-	if (typeof(opts) === 'string') opts = { url: opts };
-	if (!opts.hasOwnProperty('url') || !opts.url) throw new Error('Missing url option from options for request method.')
+	if (typeof opts === 'string') opts = { url: opts };
+	if (!opts.hasOwnProperty('url') || !opts.url) throw new Error('Missing url option from options for request method.');
 
 	const req = new request(opts.url, opts.method || 'GET');
 
+	// FIXME this is vaguely stupid, refactor with less function calls
 	if (opts.headers) req.header(opts.headers);
 	if (opts.stream) req.stream();
 	if (opts.timeout) req.timeout(opts.timeout);
@@ -299,10 +318,11 @@ const phn = async (opts) => {
 	if (opts.form) req.body(opts.form, 'form');
 	if (opts.compression) req.compress(opts.compression);
 	if (opts.maxBuffer) req.resOption('maxBuffer', opts.maxBuffer);
+	if ("http2" in opts) req.configure('http2', !!opts.http2);
 	if (!opts.redirected) opts.redirected = 0;
 
 	if (typeof opts.core === 'object') {
-		Object.keys(opts.core).forEach((optName) => {
+		Object.keys(opts.core).forEach(optName=>{
 			req.option(optName, opts.core[optName]);
 		});
 	};
@@ -310,7 +330,7 @@ const phn = async (opts) => {
 	const res = await req.send();
 
 	// follow redirects
-	if (res.headers.hasOwnProperty('location') && opts.followRedirects) {
+	if ("location" in res.headers && opts.followRedirects) {
 
 		// limit the number of redirects
 		if (opts.maxRedirects && ++opts.redirected > opts.maxRedirects) return reject(new Error("Exceeded the maximum number of redirects"));
@@ -338,22 +358,14 @@ const phn = async (opts) => {
 
 // compat
 phn.promisified = phn;
-
-// callback interface
-phn.unpromisified = (opts, fn) => {
-	phn(opts).then(data=>{
-		if (fn) fn(null, data);
-	}).catch(err=>{
-		if (fn) fn(err, null);
-	});
-};
+phn.unpromisified = phn;
 
 // defaults
-phn.defaults = (defaultOpts) => async (opts) => {
-	if (typeof(opts) === 'string') opts = { url: opts };
+phn.defaults = (defaultOpts)=>async (opts)=>{
+	if (typeof opts === 'string') opts = { url: opts };
 
-	Object.keys(defaultOpts).forEach((doK) => {
-		if (!opts.hasOwnProperty(doK) || opts[doK] === null) {
+	Object.keys(defaultOpts).forEach((doK)=>{
+		if (!(doK in opts) || opts[doK] === null) {
 			opts[doK] = defaultOpts[doK];
 		};
 	});

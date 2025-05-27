@@ -1,6 +1,7 @@
 {
   "name": "phn",
-  "version": "0.1.2",
+  "type": "commonjs",
+  "version": "0.2.0",
   "description": "a lightweight http client",
   "main": "phn.js",
   "scripts": {
@@ -13,6 +14,7 @@
   "keywords": [
     "http",
     "https",
+    "http2",
     "request",
     "fetch",
     "ajax",
@@ -24,9 +26,6 @@
   "author": "yetzt",
   "license": "MIT",
   "engines": {
-    "node": ">= 8"
-  },
-  "suggestedDependencies": {
-    "fzstd": "^0.1.1"
+    "node": ">= 12"
   }
 }
