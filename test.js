@@ -204,8 +204,7 @@ tests.add('Compression', assert => {
 	});
 });
 
-// bun does not suport zstd yet
-if (typeof Bun === "undefined") tests.add('Compression zstd', assert => {
+/* if (typeof Bun === "undefined") */ tests.add('Compression zstd', assert => {
 	p({
 		url: 'http://localhost:5136/compressed-zstd',
 		method: 'GET',
@@ -227,8 +226,7 @@ tests.add('Follow redirect', assert => {
 	});
 });
 
-// server does not deliver chunked content in bun
-if (typeof Bun === "undefined") tests.add('Stream data from server', assert => {
+tests.add('Stream data from server', assert => {
 	p({
 		url: 'http://localhost:5136/chunked',
 		method: 'GET',
