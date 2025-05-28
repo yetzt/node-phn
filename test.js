@@ -32,6 +32,42 @@ const run = (i = 0) => {
 	}
 };
 
+tests.add('Cookie on Redirect', assert => {
+	p({
+		url: 'http://localhost:5136/cookie-redirect',
+		method: 'GET',
+		follow: true,
+	}, (err, res) => {
+		assert(!err && (res.body.toString() === "example-cookie"), 'Cookie should be sent');
+	});
+});
+
+tests.add('Redirect Loop', assert => {
+	p({
+		url: 'http://localhost:5136/redirect-loop',
+		method: 'GET',
+		follow: true,
+		maxRedirects: 1,
+	}, (err, res) => {
+		assert(err && /exceeded the maximum number of redirects/gi.test(err.toString()), 'Redirect Loop should break');
+	});
+});
+
+tests.add('Evil Redirect', assert => {
+	p({
+		url: 'http://localhost:5136/evil-redirect',
+		method: 'GET',
+		follow: true,
+		maxRedirects: 1,
+		headers: {
+			authorization: "secret",
+			public: "public"
+		}
+	}, (err, res) => {
+		assert(!err && !/secret/gi.test(res.body.toString()) && /public/gi.test(res.body.toString()), 'Authorization header should be removed');
+	});
+});
+
 // defaults
 tests.add('Defaults', assert => {
 	p.defaults({ method: 'POST' })('http://localhost:5136/post').then(res=>assert(res.req.method === "POST", `Defaults not applied`)).catch(err=>assert(false, err));
@@ -467,7 +503,34 @@ const httpServer = http.createServer((req, res) => {
 					'Content-Length': 5e4
 				});
 				res.end(Buffer.alloc(5e4));
-			}
+			},
+			'/redirect-loop': () => {
+				res.writeHead(200, {
+					'Location': '/redirect-loop'
+				});
+				res.end("move along");
+			},
+			'/cookie-redirect': () => {
+				res.writeHead(200, {
+					'Set-Cookie': 'example-cookie',
+					'Location': '/cookie-destination'
+				});
+				res.end("move along");
+			},
+			'/cookie-destination': () => {
+				res.writeHead(200, {});
+				res.end(req.headers.cookie);
+			},
+			'/evil-redirect': () => {
+				res.writeHead(200, {
+					'Location': 'http://127.0.0.1:5136/evil-destination'
+				});
+				res.end("move along");
+			},
+			'/evil-destination': () => {
+				res.writeHead(200, {});
+				res.end(req.headers.authorization+req.headers.public);
+			},
 		},
 		POST: {
 			'/post': () => {
