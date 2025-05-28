@@ -92,7 +92,8 @@ const phn = async (opts, fn)=>{
 	this.maxBuffer = parseInt(opts.maxBuffer,10) || Infinity;
 
 	// max redirects
-	this.maxRedirects = parseInt(opts.maxRedirects,10) || 20;
+	this.maxRedirects = parseInt(opts.maxRedirects,10) || parseInt(opts.follow,10) || 20;
+	opts.redirected = opts.redirected || 0;
 
 	// http2 options
 	this.http2core = (typeof opts.http2 === "object") ? opts.http2 : {};
@@ -196,7 +197,8 @@ const phn = async (opts, fn)=>{
 	});
 
 	// follow redirects
-	if ("location" in res.headers && (opts.follow || opts.followRedirects)) {
+	if (res.headers?.location && (opts.follow || opts.followRedirects)) {
+
 		// limit the number of redirects
 		if (this.maxRedirects && ++opts.redirected > this.maxRedirects) throw new Error("Exceeded the maximum number of redirects");
 
