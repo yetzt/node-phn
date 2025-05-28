@@ -123,4 +123,4 @@ package | size
 
 ## acknowledgement
 
-`phn` has evolved from a fork of [phin](https://github.com/ethan7g/phin) and [centra](https://github.com/ethan7g/centra) by [Ethan Davis](https://github.com/ethan7g)
+`phn` has evolved from a fork of [phin](https://npmjs.com/package/phin) and [centra](https://npmjs.com/package/centra) by [Ethan Davis](https://etdavis.com/)
