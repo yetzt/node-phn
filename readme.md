@@ -27,7 +27,7 @@ const res = await phn({
 * `method` - string; default: `GET`
 * `url` - string or url object
 * `core` - object; passed on to `http(s).request`
-* `http2` - object; passed on to `http2.request`; `false` to diable http2 support
+* `http2` - object; passed on to `http2.request`; `false` to disable http2 support
 * `headers` - object; request headers
 * `query` - object; added to `url` as query string
 * `data` - object, buffer, typed array; sent as data in POST request
