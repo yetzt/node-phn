@@ -1,6 +1,6 @@
 {
   "name": "phn",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "commonjs",
   "description": "A lightweight HTTP/HTTPS/HTTP2 client for Node.js",
   "main": "phn.js",
