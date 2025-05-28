@@ -111,7 +111,6 @@ const res = await phn('https://example.org/')
 package | size
 --- | ---
 [phn](https://npmjs.com/package/phn) | [![phn package size](https://packagephobia.now.sh/badge?p=phn)](https://packagephobia.now.sh/result?p=phn)
-[phin](https://npmjs.com/package/phin) | [![phin package size](https://packagephobia.now.sh/badge?p=phin)](https://packagephobia.now.sh/result?p=phin)
 [needle](https://npmjs.com/package/needle) | [![needle package size](https://packagephobia.now.sh/badge?p=needle)](https://packagephobia.now.sh/result?p=needle)
 [got](https://npmjs.com/package/got) | [![got package size](https://packagephobia.now.sh/badge?p=got)](https://packagephobia.now.sh/result?p=got)
 [undici](https://npmjs.com/package/undici) | [![undici package size](https://packagephobia.now.sh/badge?p=undici)](https://packagephobia.now.sh/result?p=undici)
