@@ -58,7 +58,7 @@ resp.stream.pipe(/* ... */)
 
 ### custom http(s) options
 
-use a custom agent
+use a custom agent for http and https
 
 ``` js
 const phn = require("phn");
@@ -69,6 +69,7 @@ const agent = new https.Agent({ keepAlive: true });
 await phn({
 	url: 'https://example.org/',
 	core: { agent },
+	http2: false
 });
 ```
 
