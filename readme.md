@@ -34,7 +34,7 @@ const res = await phn({
 * `form` - object; sent as `application/x-www-form-urlencoded`
 * `parse` - `"json"`, `"string"` or `function(body)`; parse response body
 * `follow` - follow redirects if `true`
-* `maxRedirects` - maximum number of redirects
+* `maxRedirects` - maximum number of redirects, default: 20
 * `stream` - return stream as `res.stream` instead of `res.body`
 * `compression` - bool or string, string overrides `accept-encoding` header, default: `true`
 * `timeout` -  request timeout in milliseconds

@@ -88,8 +88,11 @@ const phn = async (opts, fn)=>{
 	this.method = (opts.method || "get").toUpperCase();
 	this.data = null;
 
-	// assign maximum buffer size
+	// maximum buffer size
 	this.maxBuffer = parseInt(opts.maxBuffer,10) || Infinity;
+
+	// max redirects
+	this.maxRedirects = parseInt(opts.maxRedirects,10) || 20;
 
 	// http2 options
 	this.http2core = (typeof opts.http2 === "object") ? opts.http2 : {};
@@ -195,8 +198,19 @@ const phn = async (opts, fn)=>{
 	// follow redirects
 	if ("location" in res.headers && (opts.follow || opts.followRedirects)) {
 		// limit the number of redirects
-		if (opts.maxRedirects && ++opts.redirected > opts.maxRedirects) throw new Error("Exceeded the maximum number of redirects");
-		opts.url = (new URL(res.headers["location"], opts.url)).toString();
+		if (this.maxRedirects && ++opts.redirected > this.maxRedirects) throw new Error("Exceeded the maximum number of redirects");
+
+		const redirectedUrl = new URL(res.headers["location"], this.url);
+		if (redirectedUrl.protocol === this.url.protocol && redirectedUrl.host === this.url.host) { // keep cookies
+			if (res.headers["set-cookie"]) opts.headers = { ...opts.headers, cookie: res.headers["set-cookie"] };
+		} else { // remove spicy request headers
+			opts.headers = Object.entries({ ...opts.headers }).reduce((h,[k,v])=>{
+				if (!["authorization","cookie","proxy-authorization"].includes(k.toLowerCase())) h[k] = v;
+				return h;
+			},{});
+		};
+		opts.url = redirectedUrl.toString();
+
 		return phn(opts, fn);
 	};
 
