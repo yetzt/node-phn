@@ -70,6 +70,13 @@ async function http2Session(url, opts){
 	return (http2Sessions[url.origin] = http2.connect(`${url.origin}`, opts));
 };
 
+// helper: http(s) sessions
+const agents = {};
+function httpAgent(p){
+	if (!agents[p] || agents[p].destroyed) agents[p] = new (p === "http:" ? http : https).Agent({ keepAlive: true });
+	return agents[p];
+};
+
 // clean up sessions on exit
 process.on("exit", ()=>{
 	for (const client of Object.values(http2Sessions)) client.close();
@@ -132,19 +139,20 @@ const phn = async (opts, fn)=>{
 	let { transport, req, res, stream, client } = await new Promise(async (resolve, reject)=>{
 
 		// assemble options for http1
-		const options = Object.assign({
-			"protocol": this.url.protocol,
-			"host": this.url.hostname.replace("[", "").replace("]", ""),
-			"port": this.url.port,
-			"path": this.url.pathname + (this.url.search === null ? "" : this.url.search),
-			"method": this.method,
-			"headers": this.headers
-		}, opts.core);
+		const options = {
+			protocol: this.url.protocol,
+			host: this.url.hostname.replace("[", "").replace("]", ""),
+			port: this.url.port,
+			path: this.url.pathname + (this.url.search ?? ""),
+			method: this.method,
+			headers: this.headers,
+			agent: httpAgent(this.url.protocol),
+			...opts.core,
+		};
 
 		let req;
 		switch (this.url.protocol) {
 			case "http:":
-				// FIXME core opts, use own agent with keepalive
 				req = http.request(options, res=>resolve({ transport: "http", req, res, stream: res, wtf: "bbq" }));
 			break;
 			case "https:":
@@ -166,7 +174,6 @@ const phn = async (opts, fn)=>{
 					});
 
 				} else {
-					// FIXME core opts, use own agent with keepalive
 					req = https.request(options, res=>{
 						resolve({ transport: "https", req, res, stream: res })
 					});
