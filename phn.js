@@ -92,7 +92,7 @@ const phn = async (opts, fn)=>{
 	this.maxBuffer = parseInt(opts.maxBuffer,10) || Infinity;
 
 	// max redirects
-	this.maxRedirects = parseInt(opts.maxRedirects,10) || parseInt(opts.follow,10) || 20;
+	this.maxRedirects = (typeof opts?.maxRedirects === "number") ? opts.maxRedirects : (typeof opts?.follow === "number") ? opts.follow : 20;
 	opts.redirected = opts.redirected || 0;
 
 	// http2 options
