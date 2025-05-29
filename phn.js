@@ -153,7 +153,7 @@ const phn = async (opts, fn)=>{
 		let req;
 		switch (this.url.protocol) {
 			case "http:":
-				req = http.request(options, res=>resolve({ transport: "http", req, res, stream: res, wtf: "bbq" }));
+				req = http.request(options, res=>resolve({ transport: "http", req, res, stream: res }));
 			break;
 			case "https:":
 
