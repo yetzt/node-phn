@@ -239,14 +239,15 @@ tests.add('Compression', assert => {
 	});
 });
 
-/* if (typeof Bun === "undefined") */ tests.add('Compression zstd', assert => {
+tests.add('zstd Compression if available', assert => {
 	p({
 		url: 'http://localhost:5136/compressed-zstd',
 		method: 'GET',
 		timeout: 1000,
 		compression: true
 	}, (err, res) => {
-		assert(res.body.toString() === 'example', err);
+		if (err) return assert(/createZstdDecompress is not a function/.test(err.toString()), err.toString())
+		assert(res.body.toString() === 'example', "Incorrect Decompression");
 	});
 });
 
