@@ -82,6 +82,29 @@ tests.add('Missing Options', assert => {
 	}
 });
 
+// default agent
+tests.add('Default Agent', assert => {
+	p({
+		url: 'http://localhost:5136/get',
+		http2: false
+	}, (err, res) => {
+		if (err) return assert(false, err);
+		assert(res?.req?.agent?.options?.keepAlive, `Not used`);
+	});
+});
+
+// custom agent
+tests.add('Custom Agent', assert => {
+	p({
+		url: 'http://localhost:5136/get',
+		http2: false,
+		core: { agent: new http.Agent({ foo: "bar" }) },
+	}, (err, res) => {
+		if (err) return assert(false, err);
+		assert((res?.req?.agent?.options?.foo === "bar"), `Not used`);
+	});
+});
+
 // Define test cases
 tests.add('Callback Interface', assert => {
 	p('http://localhost:5136/get', (err, res) => {
