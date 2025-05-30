@@ -6,6 +6,7 @@ a lightweight http client that works great with `node` and `bun`
 * works with async/await and callbacks
 * compression support
 * fallback zstd support via [fzstd](https://www.npmjs.com/package/fzstd) when installed
+* optional decode support via [iconv-lite](https://www.npmjs.com/package/iconv-lite) when installed
 * 200% test coverage (we run them at least twice)
 
 ## install
@@ -36,6 +37,7 @@ const res = await phn({
 * `follow` - follow redirects if `true`, limit if Number (default: 20)
 * `stream` - return stream as `res.stream` instead of `res.body`
 * `compression` - bool or string, string overrides `accept-encoding` header, default: `true`
+* `decode` - bool or string; use `iconv-lite` to decode stream if available
 * `timeout` -  request timeout in milliseconds
 * `maxBuffer` -  maximum response buffer size
 
@@ -100,9 +102,15 @@ const res = await phn('https://example.org/')
 
 ### `zstd` support
 
-`bun` and `node <=22` don't support `zstd` compression, but `phn` can handle `zstd` when `fzstd` is available.
+`bun` and `node <=22` don't support `zstd` compression, but `phn` can handle `zstd` when `fzstd` is available
 
 > `npm i fzstd`
+
+### decode support
+
+phn can decode various charsets via the `decode` option when `iconv` is available
+
+> `npm i iconv-lite`
 
 ## comparison
 

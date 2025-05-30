@@ -37,6 +37,15 @@ const createZstdDecompress = zlib.createZstdDecompress || (()=>{
 	};
 })();
 
+// shim for iconv-lite
+const iconv = (()=>{
+	try {
+		return require("iconv-lite");
+	} catch (err) {
+		return null;
+	};
+})();
+
 // find available encodings
 const supportedCompression = [
 	(!!createZstdDecompress && "zstd"),
@@ -244,7 +253,16 @@ const phn = async (opts, fn)=>{
 		break;
 	};
 
-	// IDEA: iconv decode via iconv-lite shim?
+	// iconv decode via iconv-lite if available
+	if (iconv && opts.decode) { // iconv.encodingExists("us-ascii")
+		const charset = (typeof opts.decode === "string") ? opts.decode : res.headers?.['content-type']?.match(/charset=([^;]+)/i)?.[1].trim();
+		if (charset) {
+			if (!iconv.encodingExists(charset)) throw new Error(`Unknown Charset ${charset}`);
+			stream = stream.pipe(iconv.decodeStream(charset)).pipe(new transformStream({
+				transform(c, _, f) { f(null, Buffer.from(c)); }
+			}));
+		};
+	};
 
 	// deliver stream if requested
 	if (opts.stream) {
