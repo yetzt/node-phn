@@ -108,7 +108,7 @@ const res = await phn('https://example.org/')
 
 ### decode support
 
-phn can decode various charsets via the `decode` option when `iconv` is available
+phn can decode various charsets via the `decode` option when `iconv-lite` is available
 
 > `npm i iconv-lite`
 
