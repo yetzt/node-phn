@@ -3,6 +3,7 @@ const http = require("node:http");
 const https = require("node:https");
 const http2 = require("node:http2");
 const tls = require("node:tls");
+const transformStream = require("node:stream").Transform;
 
 const qs = require("node:querystring");
 const zlib = require("node:zlib");
@@ -12,7 +13,6 @@ const { URL } = require("node:url");
 const createZstdDecompress = zlib.createZstdDecompress || (()=>{
 	try {
 		const fzstd = require("fzstd");
-		const transformStream = require("node:stream").Transform;
 		return ()=>{
 			return new transformStream({
 				transform(chunk, encoding, fn) {
