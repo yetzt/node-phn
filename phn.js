@@ -212,6 +212,9 @@ const phn = async (opts, fn)=>{
 
 	});
 
+	// handle aborts
+	stream.on("aborted", ()=>reject(new Error("Server aborted request")));
+
 	// follow redirects
 	if (res.headers?.location && (opts.follow || opts.followRedirects)) {
 
@@ -275,7 +278,6 @@ const phn = async (opts, fn)=>{
 		let b = Buffer.alloc(0);
 
 		stream.on("error", err=>reject(err));
-		stream.on("aborted", ()=>reject(new Error("Server aborted request")));
 
 		stream.on("data", chunk=>{
 			b = Buffer.concat([b, chunk]);

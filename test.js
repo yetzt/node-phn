@@ -371,7 +371,7 @@ tests.add(`HTTP2 connection reuse`, async assert => {
 	assert(res1.statusCode === 200 && res2.statusCode === 200, `did not reuse http2 session`);
 });
 
-// request timeout
+// connection handling
 
 tests.add(`timeout option`, assert => {
 	p({
@@ -380,13 +380,20 @@ tests.add(`timeout option`, assert => {
 		timeout: 100,
 		http2: false,
 	}, (err) => {
-		if(err && /timeout/gi.test(err.toString())) {
-			return assert(true, `request timed out properly`);
-		}
-		assert(false, `request didn't time out properly`);
+		assert(err && /timeout/gi.test(err.toString()), `request didn't time out properly`);
 	});
 });
 
+tests.add(`server abort`, assert => {
+	p({
+		url: `http://localhost:5136/abort`,
+		method: `GET`,
+		timeout: 100,
+		http2: false,
+	}, (err) => {
+		assert((err && err.code === "ECONNRESET"), `server abort was not handled`);
+	});
+});
 
 // decompression
 
@@ -446,7 +453,6 @@ tests.add(`no need to decode`, assert => {
 });
 
 // redirects
-
 
 tests.add(`follow redirect`, assert => {
 	p({
@@ -508,6 +514,9 @@ const httpServer = http.createServer((req, res) => {
 					res.writeHead(200);
 					res.end(`That was slow`);
 				}, 1300);
+			},
+			"/abort": () => {
+				req.destroy();
 			},
 			"/notjson": () => {
 				res.writeHead(200);
