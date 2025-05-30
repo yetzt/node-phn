@@ -189,7 +189,7 @@ const phn = async (opts, fn)=>{
 		if (opts.timeout) req.setTimeout(opts.timeout);
 		req.on("timeout", ()=>{
 			reject(new Error("Timeout reached"));
-			req.abort();
+			req.abort?.();
 		});
 
 		// handle error
