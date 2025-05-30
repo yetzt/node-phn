@@ -2,7 +2,7 @@
   "name": "phn",
   "version": "0.2.1",
   "type": "commonjs",
-  "description": "A lightweight HTTP/HTTPS/HTTP2 client for Node.js",
+  "description": "a lightweight http client for node and bun, replacement for phin",
   "main": "phn.js",
   "exports": {
     ".": "./phn.js"
@@ -31,9 +31,9 @@
     "phin",
     "centra",
     "lightweight",
-    "streaming"
+    "stream"
   ],
-  "author": "yetzt",
+  "author": "yetzt <phn@yetzt.me>",
   "license": "MIT",
   "engines": {
     "node": ">=14",
