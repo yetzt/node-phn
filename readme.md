@@ -1,13 +1,16 @@
 # phn
 
-a lightweight http client that works great with `node` and `bun`
+A lightweight HTTP client that works seamlessly with `node` and `bun`.
 
-* http2 support
-* works with async/await and callbacks
-* compression support
-* fallback zstd support via [fzstd](https://www.npmjs.com/package/fzstd) when installed
+* http2 support with per-origin session
+* http1 keepalive-agent by default
+* compression support with fallback zstd support via [fzstd](https://www.npmjs.com/package/fzstd) when installed
 * optional decode support via [iconv-lite](https://www.npmjs.com/package/iconv-lite) when installed
-* 200% test coverage (we run them at least twice)
+* works with async/await, promises and callbacks
+* tiny and comes with no required dependencies
+* 200% test coverage (we run every test at least twice for good measure)
+
+phn is an interface-compatible, drop-in replacement for the abandoned [phin](https://npmjs.com/package/phin)
 
 ## install
 
@@ -26,20 +29,20 @@ const res = await phn({
 ### options
 
 * `method` - string; default: `GET`
-* `url` - string or url object
+* `url` - string or URL object
 * `core` - object; passed on to `http(s).request`
 * `http2` - object; passed on to `http2.request`; `false` to disable http2 support
 * `headers` - object; request headers
 * `query` - object; added to `url` as query string
 * `data` - object, buffer, typed array; sent as data in POST request
 * `form` - object; sent as `application/x-www-form-urlencoded`
-* `parse` - `"json"`, `"string"` or `function(body)`; parse response body
+* `parse` - `"json"`, `"string"`, or `function(body)`; parse response body
 * `follow` - follow redirects if `true`, limit if Number (default: 20)
 * `stream` - return stream as `res.stream` instead of `res.body`
 * `compression` - bool or string, string overrides `accept-encoding` header, default: `true`
 * `decode` - bool or string; use `iconv-lite` to decode stream if available
-* `timeout` -  request timeout in milliseconds
-* `maxBuffer` -  maximum response buffer size
+* `timeout` - request timeout in milliseconds
+* `maxBuffer` - maximum response buffer size
 
 ### stream
 
@@ -97,7 +100,7 @@ const phn = require("phn").defaults({
 	timeout: 2000
 });
 
-const res = await phn('https://example.org/')
+const res = await phn('https://example.org/');
 ```
 
 ### `zstd` support
@@ -108,27 +111,14 @@ const res = await phn('https://example.org/')
 
 ### decode support
 
-phn can decode various charsets via the `decode` option when `iconv-lite` is available
+`phn` can decode various character encodings via the `decode` option when `iconv-lite` is installed
 
 > `npm i iconv-lite`
-
-## comparison
-
-`phn` is tiny and comes with no required dependencies
-
-package | size
---- | ---
-[phn](https://npmjs.com/package/phn) | [![phn package size](https://packagephobia.now.sh/badge?p=phn)](https://packagephobia.now.sh/result?p=phn)
-[needle](https://npmjs.com/package/needle) | [![needle package size](https://packagephobia.now.sh/badge?p=needle)](https://packagephobia.now.sh/result?p=needle)
-[got](https://npmjs.com/package/got) | [![got package size](https://packagephobia.now.sh/badge?p=got)](https://packagephobia.now.sh/result?p=got)
-[undici](https://npmjs.com/package/undici) | [![undici package size](https://packagephobia.now.sh/badge?p=undici)](https://packagephobia.now.sh/result?p=undici)
-[axios](https://npmjs.com/package/axios) | [![axios package size](https://packagephobia.now.sh/badge?p=axios)](https://packagephobia.now.sh/result?p=axios)
-[superagent](https://npmjs.com/package/superagent) | [![superagent package size](https://packagephobia.now.sh/badge?p=superagent)](https://packagephobia.now.sh/result?p=superagent)
 
 ## license
 
 [MIT](./license.md)
 
-## acknowledgement
+## acknowledgements
 
 `phn` has evolved from a fork of [phin](https://npmjs.com/package/phin) and [centra](https://npmjs.com/package/centra) by [Ethan Davis](https://etdavis.com/)
