@@ -2,6 +2,15 @@ const p = require(`./phn.js`)
 const http = require(`http`);
 const qs = require(`querystring`);
 
+function installed(req) {
+	try {
+		require.resolve(req);
+		return true;
+	} catch (err) {
+		return false;
+	}
+}
+
 const tests = [];
 tests.add = (name, test) => tests.push([name, test]);
 
@@ -422,7 +431,7 @@ tests.add(`zstd compression if available`, assert => {
 
 // decode (if iconv-lite is available)
 
-tests.add(`decode with server charset`, assert => {
+if (installed("iconv-lite")) tests.add(`decode with server charset`, assert => {
 	p({
 		url: `http://localhost:5136/latin1`,
 		decode: true,
@@ -432,7 +441,7 @@ tests.add(`decode with server charset`, assert => {
 	});
 });
 
-tests.add(`decode with client specified charset`, assert => {
+if (installed("iconv-lite")) tests.add(`decode with client specified charset`, assert => {
 	p({
 		url: `http://localhost:5136/koi8u`,
 		decode: `koi8-u`,
