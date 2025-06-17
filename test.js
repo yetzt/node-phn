@@ -298,6 +298,13 @@ tests.add(`HTTP1 core options`, async assert => {
 	assert(res.statusCode === 200, res.body.toString());
 });
 
+tests.add(`HTTP1 response headers`, async assert => {
+	const res = await p({
+		url: `http://localhost:5136/json`
+	});
+	assert(res.statusCode === 200 && res.headers["content-type"] === "application/json", "Missing response headers");
+});
+
 // default agent
 tests.add(`default HTTP agent`, assert => {
 	p({
@@ -331,6 +338,17 @@ tests.add(`HTTP2 basic GET request`, async assert => {
 		parse: `json`
 	});
 	assert(res.statusCode === 200 && res.body.url === `https://nghttp2.org/httpbin/get`, `failed http2 GET request`);
+});
+
+tests.add(`HTTP2 response headers`, async assert => {
+
+	const res = await p({
+		url: `https://nghttp2.org/httpbin/get`,
+		http2: true,
+		timeout: 3000,
+		parse: `json`
+	});
+	assert(res.statusCode === 200 && res.headers["content-type"] === `application/json`, `missing response headers`);
 });
 
 tests.add(`HTTP2 post with JSON body`, async assert => {
@@ -540,7 +558,7 @@ const httpServer = http.createServer((req, res) => {
 				}, 50);
 			},
 			"/json": () => {
-				res.writeHead(200);
+				res.writeHead(200, { "content-type": "application/json" });
 				res.end(JSON.stringify({
 					hi: `hey`
 				}));
