@@ -1,6 +1,6 @@
 # phn
 
-A lightweight HTTP client that works seamlessly with `node` and `bun`.
+A lightweight HTTP client that works seamlessly with `node` and `bun`:
 
 * http2 support with per-origin session
 * http1 keepalive-agent by default
@@ -68,7 +68,7 @@ use a custom agent for http and https
 const phn = require("phn");
 const https = require("https");
 
-const agent = new https.Agent({ keepAlive: true });
+const agent = new SocksProxyAgent(/* ... */);
 
 await phn({
 	url: 'https://example.org/',
