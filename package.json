@@ -1,6 +1,6 @@
 {
   "name": "phn",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "type": "commonjs",
   "description": "a lightweight http client for node and bun, replacement for phin",
   "main": "phn.js",
