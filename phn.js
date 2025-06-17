@@ -183,6 +183,7 @@ const phn = async (opts, fn)=>{
 					});
 
 				} else {
+
 					req = https.request(options, res=>{
 						resolve({ transport: "https", req, res, stream: res })
 					});
@@ -270,7 +271,7 @@ const phn = async (opts, fn)=>{
 	// deliver stream if requested
 	if (opts.stream) {
 		client?.unref?.();
-		return { ...res, req, transport, stream, statusCode: res.statusCode };
+		return { ...res, req, transport, stream, statusCode: res.statusCode, headers: res.headers };
 	};
 
 	// assemble body
@@ -312,7 +313,7 @@ const phn = async (opts, fn)=>{
 	};
 
 	// deliver
-	return { ...res, req, transport, body, statusCode: res.statusCode };
+	return { ...res, req, transport, body, statusCode: res.statusCode, headers: res.headers };
 
 };
 
