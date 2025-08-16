@@ -277,7 +277,8 @@ const phn = async (opts, fn)=>{
 
 	// deliver stream if requested
 	if (opts.stream) {
-		client?.unref?.();
+		stream.socket?.unref?.();
+		client?.socket?.unref?.();
 		return { ...res, req, transport, stream, statusCode: res.statusCode, headers: res.headers };
 	};
 
@@ -296,7 +297,8 @@ const phn = async (opts, fn)=>{
 		});
 
 		stream.on("end", ()=>{
-			client?.unref?.();
+			stream.socket?.unref?.();
+			client?.socket?.unref?.();
 			resolve(b);
 		});
 
