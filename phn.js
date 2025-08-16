@@ -237,7 +237,6 @@ const phn = async (opts, fn)=>{
 				return h;
 			},{});
 		};
-		stream.socket.unref?.();
 		client?.socket?.unref?.();
 		opts.url = redirectedUrl.toString();
 
@@ -278,7 +277,6 @@ const phn = async (opts, fn)=>{
 
 	// deliver stream if requested
 	if (opts.stream) {
-		stream.socket?.unref?.();
 		client?.socket?.unref?.();
 		return { ...res, req, transport, stream, statusCode: res.statusCode, headers: res.headers };
 	};
@@ -298,7 +296,6 @@ const phn = async (opts, fn)=>{
 		});
 
 		stream.on("end", ()=>{
-			stream.socket?.unref?.();
 			client?.socket?.unref?.();
 			resolve(b);
 		});
