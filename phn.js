@@ -75,7 +75,6 @@ async function alpn(url) {
 		socket.setTimeout?.(5000, () => settle("http/1.1"));
 		socket.once("secureConnect", () => settle(socket.alpnProtocol));
 		socket.once("error", () => settle("http/1.1"));
-		socket.unref?.();
 	});
 };
 
