@@ -338,3 +338,9 @@ phn.promisified = phn;
 phn.unpromisified = phn;
 
 module.exports = phn;
+
+// clean sessions and agents on exit
+process.on("beforeExit", ()=>{
+	for (const s of Object.values(http2Sessions)) try { s.close(); } catch {};
+	for (const a of Object.values(agents)) try { a.destroy(); } catch {};
+});
