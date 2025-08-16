@@ -64,11 +64,18 @@ async function alpn(url) {
 			port: url.port || 443,
 			servername: url.hostname,
 			ALPNProtocols: ["h2", "http/1.1"],
-		}, () => {
-			alpnCache[url.origin] = socket.alpnProtocol;
-			resolve(socket.alpnProtocol);
-			socket.destroy();
 		});
+
+		const settle = (proto) => {
+			if (!alpnCache[url.origin]) alpnCache[url.origin] = proto || "http/1.1";
+			try { socket.destroy(); } catch {}
+			resolve(alpnCache[url.origin]);
+		};
+
+		socket.setTimeout?.(5000, () => settle("http/1.1"));
+		socket.once("secureConnect", () => settle(socket.alpnProtocol));
+		socket.once("error", () => settle("http/1.1"));
+		socket.unref?.();
 	});
 };
 
