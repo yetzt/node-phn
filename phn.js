@@ -237,6 +237,8 @@ const phn = async (opts, fn)=>{
 				return h;
 			},{});
 		};
+		stream.socket.unref?.();
+		client?.socket?.unref?.();
 		opts.url = redirectedUrl.toString();
 
 		return phn(opts, fn);
