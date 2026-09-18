@@ -80,9 +80,25 @@ async function alpn(url) {
 
 // helper: http2 sessions
 const http2Sessions = {};
+const http2SessionRequests = new WeakMap();
 async function http2Session(url, opts){
 	if (url.origin in http2Sessions && !http2Sessions[url.origin].destroyed && !http2Sessions[url.origin].closed && !http2Sessions[url.origin].destroying) return http2Sessions[url.origin];
 	return (http2Sessions[url.origin] = http2.connect(`${url.origin}`, opts));
+};
+
+function refHttp2Session(client) {
+	const requests = http2SessionRequests.get(client) || 0;
+	if (!requests) client.socket.ref();
+	http2SessionRequests.set(client, requests + 1);
+
+	let released = false;
+	return () => {
+		if (released) return;
+		released = true;
+		const remaining = http2SessionRequests.get(client) - 1;
+		http2SessionRequests.set(client, remaining);
+		if (!remaining) client.socket.unref();
+	};
 };
 
 // helper: http(s) sessions
@@ -151,7 +167,7 @@ const phn = async function(opts, fn){
 	if ((!("compression" in opts) || !!opts.compression) && !headers["accept-encoding"]) headers["accept-encoding"] = (typeof opts.compression === "string") ? opts.compression : supportedCompression;
 
 	// send request
-	let { transport, req, res, stream, client } = await new Promise(async (resolve, reject)=>{
+	let { transport, req, res, stream, client, ref } = await new Promise(async (resolve, reject)=>{
 
 		// assemble options for http1
 		const options = {
@@ -165,7 +181,7 @@ const phn = async function(opts, fn){
 			...opts.core,
 		};
 
-		let req;
+		let req, ref;
 		switch (url.protocol) {
 			case "http:":
 				req = http.request(options, res=>resolve({ transport: "http", req, res, stream: res }));
@@ -178,14 +194,14 @@ const phn = async function(opts, fn){
 					// new http2 session
 					const client = await http2Session(url);
 
-					// reference socket
-					client.socket.ref();
+					// reference to http2 sessions
+					ref = refHttp2Session(client);
 
 					req = client.request({ ":method": options.method, ":path": options.path, ...options.headers, ...http2core });
 
 					req.on("response", (headers) => {
 						const res = { headers, statusCode: headers[":status"] };
-						resolve({ transport: "http2", req, res, stream: req, client });
+						resolve({ transport: "http2", req, res, stream: req, client, ref });
 					});
 
 				} else {
@@ -204,12 +220,16 @@ const phn = async function(opts, fn){
 		// handle timeout
 		if (opts.timeout) req.setTimeout(opts.timeout);
 		req.on("timeout", ()=>{
+			ref?.();
 			reject(new Error("Timeout reached"));
 			req.abort?.();
 		});
 
 		// handle error
-		req.on("error", reject);
+		req.on("error", err=>{
+			ref?.();
+			reject(err);
+		});
 
 		// send data
 		if (data) req.write(data);
@@ -218,9 +238,6 @@ const phn = async function(opts, fn){
 		req.end();
 
 	});
-
-	// handle aborts
-	stream.on("aborted", ()=>reject(new Error("Server aborted request")));
 
 	// follow redirects
 	if (res.headers?.location && (opts.follow || opts.followRedirects)) {
@@ -237,7 +254,7 @@ const phn = async function(opts, fn){
 				return h;
 			},{});
 		};
-		client?.socket?.unref?.();
+		ref?.();
 		opts.url = redirectedUrl.toString();
 
 		return phn(opts, fn);
@@ -245,6 +262,7 @@ const phn = async function(opts, fn){
 
 	// check content-length header against maxBuffer
 	if (res.headers["content-length"] && parseInt(res.headers["content-length"],10) > maxBuffer) {
+		ref?.();
 		throw new Error(`Content length exceeds maxBuffer: ${res.headers["content-length"]}b`);
 	};
 
@@ -277,7 +295,11 @@ const phn = async function(opts, fn){
 
 	// deliver stream if requested
 	if (opts.stream) {
-		client?.socket?.unref?.();
+		if (ref) {
+			stream.once("end", ref);
+			stream.once("error", ref);
+			stream.once("close", ref);
+		};
 		return { ...res, req, transport, stream, statusCode: res.statusCode, headers: res.headers };
 	};
 
@@ -285,7 +307,15 @@ const phn = async function(opts, fn){
 	let body = await new Promise((resolve,reject)=>{
 		let b = Buffer.alloc(0);
 
-		stream.on("error", err=>reject(err));
+		stream.on("error", err=>{
+			ref?.();
+			reject(err);
+		});
+		stream.on("aborted", ()=>{
+			ref?.();
+			reject(new Error("Server aborted request"));
+		});
+		if (ref) stream.on("close", ref);
 
 		stream.on("data", chunk=>{
 			b = Buffer.concat([b, chunk]);
@@ -296,7 +326,7 @@ const phn = async function(opts, fn){
 		});
 
 		stream.on("end", ()=>{
-			client?.socket?.unref?.();
+			ref?.();
 			resolve(b);
 		});
 
