@@ -120,7 +120,7 @@ const phn = async function(opts, fn){
 	// callback compat
 	if (typeof fn === "function") return await phn(opts).then(data=>(fn(null, data))).catch(fn);
 
-	if (typeof opts === "string") opts = { url: opts };
+	opts = (typeof opts === "string") ? { url: opts } : { ...opts, headers: opts.headers ? { ...opts.headers } : {} };
 	if (!("url" in opts) || !opts.url) throw new Error("Missing url option from options for request method.");
 
 	const url = (typeof opts.url === "string") ? new URL(opts.url) : opts.url;
