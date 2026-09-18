@@ -260,10 +260,12 @@ const phn = async function(opts, fn){
 				return h;
 			},{});
 		};
-		ref?.();
-		opts.url = redirectedUrl.toString();
 
-		return phn(opts, fn);
+		// end stream before redirect
+		(transport === "http2") ? stream.close(http2.constants.NGHTTP2_CANCEL) : stream.resume();
+
+		ref?.();
+		return phn({ ...opts, url: redirectedUrl.toString() }, fn);
 	};
 
 	// check content-length header against maxBuffer
