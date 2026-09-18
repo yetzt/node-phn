@@ -402,8 +402,9 @@ tests.add(`HTTP2 connection reuse`, async assert => {
 		parse: `json`
 	};
 	const res1 = await p(opts);
+	const sessions = http2Sessions.size;
 	const res2 = await p(opts);
-	assert(res1.statusCode === 200 && res2.statusCode === 200, `did not reuse http2 session`);
+	assert(res1.statusCode === 200 && res2.statusCode === 200 && sessions === http2Sessions.size, `did not reuse http2 session`);
 });
 
 tests.add(`HTTP2 concurrent requests share a session`, async assert => {
@@ -426,6 +427,40 @@ tests.add(`HTTP2 concurrent requests share a session`, async assert => {
 		first.body.id === `first` && second.body.id === `second` && http2Sessions.size === 1,
 		`concurrent requests did not use independent streams on one HTTP2 session`
 	);
+});
+
+tests.add(`HTTP2 keeps shared socket referenced for pending streams`, async assert => {
+	const warmup = await p({ url: http2Url(`/get`), http2: true, parse: `json` });
+	const socket = warmup.req.session.socket;
+	const ref = socket.ref;
+	const unref = socket.unref;
+	let refs = 0;
+	let unrefs = 0;
+
+	socket.ref = function() {
+		refs++;
+		return ref.call(this);
+	};
+	socket.unref = function() {
+		unrefs++;
+		return unref.call(this);
+	};
+
+	let slowCompleted = false;
+	try {
+		const slow = p({ url: http2Url(`/slow`), http2: true, parse: `json` }).then(res => {
+			slowCompleted = true;
+			return res;
+		});
+		const fast = await p({ url: http2Url(`/fast`), http2: true, parse: `json` });
+		await new Promise(resolve => setTimeout(resolve, 20));
+		const heldWhilePending = fast.body.id === `fast` && !slowCompleted && refs === 1 && unrefs === 0;
+		const delayed = await slow;
+		assert(heldWhilePending && delayed.body.id === `slow` && unrefs === 1, `shared HTTP2 socket was unreferenced before the last stream completed`);
+	} finally {
+		socket.ref = ref;
+		socket.unref = unref;
+	};
 });
 
 // connection handling
@@ -789,8 +824,12 @@ const httpServer = http.createServer((req, res) => {
 			const response = pathname === `/post`
 				? { json: JSON.parse(body) }
 				: { id: pathname.slice(1), url: http2Url(pathname), requestId: headers[`x-request-id`] };
-			stream.respond({ ":status": 200, "content-type": `application/json` });
-			stream.end(JSON.stringify(response));
+			const send = () => {
+				stream.respond({ ":status": 200, "content-type": `application/json` });
+				stream.end(JSON.stringify(response));
+			};
+			if (pathname === `/slow`) setTimeout(send, 100);
+			else send();
 		});
 	});
 
