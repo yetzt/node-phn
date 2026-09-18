@@ -86,6 +86,7 @@ async function http2Session(url, opts){
 	return (http2Sessions[url.origin] = http2.connect(`${url.origin}`, opts));
 };
 
+// keep track of http2 clients per session, unref only if no more clients are active
 function refHttp2Session(client) {
 	const requests = http2SessionRequests.get(client) || 0;
 	if (!requests) client.socket.ref();
@@ -194,7 +195,7 @@ const phn = async function(opts, fn){
 					// new http2 session
 					const client = await http2Session(url);
 
-					// reference to http2 sessions
+					// reference to shared http2 sessions, call to unref if unrefable
 					ref = refHttp2Session(client);
 
 					req = client.request({ ":method": options.method, ":path": options.path, ...options.headers, ...http2core });
