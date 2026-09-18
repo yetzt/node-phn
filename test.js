@@ -1,6 +1,14 @@
 const p = require(`./phn.js`)
 const http = require(`http`);
+const http2 = require(`node:http2`);
 const qs = require(`querystring`);
+const fs = require(`node:fs`);
+const os = require(`node:os`);
+const path = require(`node:path`);
+const { execFileSync } = require(`node:child_process`);
+
+const http2Sessions = new Set();
+const http2Url = pathname => `https://localhost:5137${pathname}`;
 
 function installed(req) {
 	try {
@@ -332,18 +340,18 @@ tests.add(`custom HTTP agent`, assert => {
 tests.add(`HTTP2 basic GET request`, async assert => {
 
 	const res = await p({
-		url: `https://nghttp2.org/httpbin/get`, // publicly available http2 test endpoint
+		url: http2Url(`/get`),
 		http2: true,
 		timeout: 3000,
 		parse: `json`
 	});
-	assert(res.statusCode === 200 && res.body.url === `https://nghttp2.org/httpbin/get`, `failed http2 GET request`);
+	assert(res.statusCode === 200 && res.body.url === http2Url(`/get`), `failed http2 GET request`);
 });
 
 tests.add(`HTTP2 response headers`, async assert => {
 
 	const res = await p({
-		url: `https://nghttp2.org/httpbin/get`,
+		url: http2Url(`/get`),
 		http2: true,
 		timeout: 3000,
 		parse: `json`
@@ -353,7 +361,7 @@ tests.add(`HTTP2 response headers`, async assert => {
 
 tests.add(`HTTP2 post with JSON body`, async assert => {
 	const res = await p({
-		url: `https://nghttp2.org/httpbin/post`,
+		url: http2Url(`/post`),
 		method: `POST`,
 		http2: true,
 		data: { test: true },
@@ -378,7 +386,7 @@ tests.add(`HTTP2 requested but not supported by server`, async assert => {
 
 tests.add(`HTTP2 disabled in client`, async assert => {
 	const res = await p({
-		url: `https://nghttp2.org/httpbin/get`,
+		url: http2Url(`/get`),
 		http2: false,
 		timeout: 3000,
 		parse: `json`
@@ -388,7 +396,7 @@ tests.add(`HTTP2 disabled in client`, async assert => {
 
 tests.add(`HTTP2 connection reuse`, async assert => {
 	const opts = {
-		url: `https://nghttp2.org/httpbin/get`,
+		url: http2Url(`/get`),
 		http2: true,
 		timeout: 3000,
 		parse: `json`
@@ -722,4 +730,55 @@ const httpServer = http.createServer((req, res) => {
 		res.end(`Not a valid test endpoint`);
 	});
 	handler();
-}).listen(5136, () => run());
+}).listen(5136, () => {
+
+	// generate temportary tls key and cert for http2 testing
+	const directory = fs.mkdtempSync(path.join(os.tmpdir(), `phn-test-`));
+	const key = path.join(directory, `key.pem`);
+	const cert = path.join(directory, `cert.pem`);
+
+	execFileSync(`openssl`, [
+		`req`, `-x509`, `-newkey`, `rsa:2048`, `-nodes`, `-days`, `1`,
+		`-keyout`, key, `-out`, cert, `-subj`, `/CN=localhost`
+	], { stdio: `ignore` });
+
+	// do not reject tls connections with self signed cert
+	process.env.NODE_TLS_REJECT_UNAUTHORIZED = `0`;
+
+	// delete temporary tls key and cert
+	process.on(`exit`, () => fs.rmSync(directory, { recursive: true, force: true }));
+
+	// http2 server
+	const http2Server = http2.createSecureServer({
+		key: fs.readFileSync(key),
+		cert: fs.readFileSync(cert),
+		allowHTTP1: true
+	});
+
+	// http2 session handling
+	http2Server.on(`session`, session => http2Sessions.add(session));
+
+	// http2 stream handling
+	http2Server.on(`stream`, (stream, headers) => {
+		let body = ``;
+		stream.on(`data`, chunk => body += chunk);
+		stream.on(`end`, () => {
+			const pathname = headers[`:path`];
+			const response = pathname === `/post`
+				? { json: JSON.parse(body) }
+				: { id: pathname.slice(1), url: http2Url(pathname), requestId: headers[`x-request-id`] };
+			stream.respond({ ":status": 200, "content-type": `application/json` });
+			stream.end(JSON.stringify(response));
+		});
+	});
+
+	// http2 request handling
+	http2Server.on(`request`, (req, res) => {
+		if (req.httpVersionMajor === 1) {
+			res.writeHead(200, { "content-type": `application/json` });
+			res.end(JSON.stringify({ url: http2Url(req.url) }));
+		}
+	});
+
+	http2Server.listen(5137, ()=>run());
+});
