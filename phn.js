@@ -270,6 +270,8 @@ const phn = async function(opts, fn){
 
 	// check content-length header against maxBuffer
 	if (res.headers["content-length"] && parseInt(res.headers["content-length"],10) > maxBuffer) {
+		// release stream before rejecting
+		(transport === "http2") ? stream.close(http2.constants.NGHTTP2_CANCEL) : stream.resume();
 		ref?.();
 		throw new Error(`Content length exceeds maxBuffer: ${res.headers["content-length"]}b`);
 	};
