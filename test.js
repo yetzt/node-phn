@@ -228,6 +228,17 @@ tests.add(`stream data exceeding maximum Buffer `, assert => {
 	});
 });
 
+tests.add(`chunked data exceeding maximum Buffer`, assert => {
+	p({
+		url: `http://localhost:5136/large-chunked`,
+		method: `GET`,
+		timeout: 500,
+		maxBuffer: 5e2
+	}, (err, res) => {
+		assert(err && /exceeds maxBuffer/.test(err.message), `chunked request exceeding maximum buffer size was not aborted`);
+	});
+});
+
 tests.add(`buffer body`, async assert => {
 	const res = await p({
 		method: `POST`,
@@ -687,6 +698,10 @@ const httpServer = http.createServer((req, res) => {
 				res.writeHead(200, {
 					"Content-Length": 5e4
 				});
+				res.end(Buffer.alloc(5e4));
+			},
+			"/large-chunked": () => {
+				res.writeHead(200);
 				res.end(Buffer.alloc(5e4));
 			},
 			"/redirect-loop": () => {
