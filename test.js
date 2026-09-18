@@ -149,6 +149,15 @@ tests.add(`POST request with body`, assert => {
 	});
 });
 
+tests.add(`POST request with an empty body`, async assert => {
+	const res = await p({
+		url: `http://localhost:5136/emptybody`,
+		method: `POST`,
+		data: ``
+	});
+	assert(res.statusCode === 200, res.body.toString());
+});
+
 tests.add(`POST request with form option`, assert => {
 	p({
 		url: `http://localhost:5136/fd`,
@@ -719,6 +728,19 @@ const httpServer = http.createServer((req, res) => {
 					} else {
 						res.writeHead(400);
 						res.end(`Client didn't send expected data`);
+					}
+				});
+			},
+			"/emptybody": () => {
+				let postbody = ``;
+				req.on(`data`, ch => postbody += ch);
+				req.on(`end`, () => {
+					if (postbody === `` && req.headers[`content-length`] === `0` && req.headers[`content-type`] === `application/octet-stream`) {
+						res.writeHead(200);
+						res.end(`Empty body received`);
+					} else {
+						res.writeHead(400);
+						res.end(`Expected an explicit empty body`);
 					}
 				});
 			},
