@@ -142,7 +142,7 @@ const phn = async function(opts, fn){
 	if (opts.headers) for (const [k,v] of Object.entries(opts.headers)) headers[k.toLowerCase()] = v;
 
 	// query
-	if (opts.query) for (const [k,v] of Object.entries(opts.headers)) url.searchParams.append(k,v);
+	if (opts.query) for (const [k,v] of Object.entries(opts.query)) url.searchParams.append(k,v);
 
 	// form
 	if (opts.form) {
