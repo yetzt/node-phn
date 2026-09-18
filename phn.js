@@ -151,7 +151,7 @@ const phn = async function(opts, fn){
 	};
 
 	// data
-	if (opts.data) {
+	if (opts.data !== undefined && opts.data !== null) {
 		if (typeof opts.data === "object" && !Buffer.isBuffer(opts.data) && !ArrayBuffer.isView(opts.data)) { // json
 			data = JSON.stringify(opts.data);
 			headers["content-type"] = "application/json";
@@ -162,7 +162,7 @@ const phn = async function(opts, fn){
 	};
 
 	// set content-length
-	if (data && !headers["content-length"]) headers["content-length"] = Buffer.byteLength(data);
+	if (data !== null && !headers["content-length"]) headers["content-length"] = Buffer.byteLength(data);
 
 	// compression, set unless explicitly off
 	if ((!("compression" in opts) || !!opts.compression) && !headers["accept-encoding"]) headers["accept-encoding"] = (typeof opts.compression === "string") ? opts.compression : supportedCompression;
@@ -238,7 +238,7 @@ const phn = async function(opts, fn){
 		});
 
 		// send data
-		if (data) req.write(data);
+		if (data !== null) req.write(data);
 
 		// end request
 		req.end();
