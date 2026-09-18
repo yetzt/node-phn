@@ -313,7 +313,8 @@ const phn = async function(opts, fn){
 
 	// assemble body
 	let body = await new Promise((resolve,reject)=>{
-		let b = Buffer.alloc(0);
+		const chunks = [];
+		let cl = 0;
 
 		stream.on("error", err=>{
 			ref?.();
@@ -326,16 +327,14 @@ const phn = async function(opts, fn){
 		if (ref) stream.on("close", ref);
 
 		stream.on("data", chunk=>{
-			b = Buffer.concat([b, chunk]);
-			if (b.length > opts.maxBuffer) {
-				reject(new Error(`Content length exceeds maxBuffer: ${res.headers["content-length"]}b`));
-				stream.destroy();
-			};
+			cl += chunk.length;
+			if (cl > maxBuffer) return reject(new Error(`Content length exceeds maxBuffer: ${cl}b`)), stream.destroy();
+			chunks.push(chunk);
 		});
 
 		stream.on("end", ()=>{
 			ref?.();
-			resolve(b);
+			resolve(Buffer.concat(chunks, cl));
 		});
 
 	});
