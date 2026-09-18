@@ -170,6 +170,8 @@ const phn = async function(opts, fn){
 	// send request
 	let { transport, req, res, stream, client, ref } = await new Promise(async (resolve, reject)=>{
 
+		let transport;
+
 		// assemble options for http1
 		const options = {
 			protocol: url.protocol,
@@ -185,12 +187,14 @@ const phn = async function(opts, fn){
 		let req, ref;
 		switch (url.protocol) {
 			case "http:":
-				req = http.request(options, res=>resolve({ transport: "http", req, res, stream: res }));
+				transport = "http";
+				req = http.request(options, res=>resolve({ transport, req, res, stream: res }));
 			break;
 			case "https:":
 
 				// use http2 if module is loaded, http2 not explicitly off and available on host
 				if (http2 && (!("http2" in opts) || !!opts.http2) && ("h2" === await alpn(url))) {
+					transport = "http2";
 
 					// new http2 session
 					const client = await http2Session(url);
@@ -202,13 +206,14 @@ const phn = async function(opts, fn){
 
 					req.on("response", (headers) => {
 						const res = { headers, statusCode: headers[":status"] };
-						resolve({ transport: "http2", req, res, stream: req, client, ref });
+						resolve({ transport, req, res, stream: req, client, ref });
 					});
 
 				} else {
+					transport = "https";
 
 					req = https.request(options, res=>{
-						resolve({ transport: "https", req, res, stream: res })
+						resolve({ transport, req, res, stream: res })
 					});
 				};
 
@@ -223,7 +228,7 @@ const phn = async function(opts, fn){
 		req.on("timeout", ()=>{
 			ref?.();
 			reject(new Error("Timeout reached"));
-			req.abort?.();
+			(transport === "http2") ? req.close(http2.constants.NGHTTP2_CANCEL) : req.abort?.();
 		});
 
 		// handle error
