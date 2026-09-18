@@ -1,6 +1,7 @@
 node_modules
 .DS_Store
 .npmignore
+.nova
 bun.lockb
 yarn.lock
 vendor
