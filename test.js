@@ -406,6 +406,28 @@ tests.add(`HTTP2 connection reuse`, async assert => {
 	assert(res1.statusCode === 200 && res2.statusCode === 200, `did not reuse http2 session`);
 });
 
+tests.add(`HTTP2 concurrent requests share a session`, async assert => {
+	const [first, second] = await Promise.all([
+		p({
+			url: http2Url(`/first`),
+			http2: true,
+			headers: { "x-request-id": `first` },
+			parse: `json`
+		}),
+		p({
+			url: http2Url(`/second`),
+			http2: true,
+			headers: { "x-request-id": `second` },
+			parse: `json`
+		})
+	]);
+
+	assert(
+		first.body.id === `first` && second.body.id === `second` && http2Sessions.size === 1,
+		`concurrent requests did not use independent streams on one HTTP2 session`
+	);
+});
+
 // connection handling
 
 tests.add(`timeout option`, assert => {
